@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+// TODO: Re-enable WorkManager for Daily Digest
+// dependencies {
+//     implementation("androidx.work:work-runtime-ktx:2.8.1")
+// }

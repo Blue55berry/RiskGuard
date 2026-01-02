@@ -2,92 +2,214 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Modern typography system for RiskGuard
 class AppTypography {
-  // Base font family using Inter
-  static String get fontFamily => GoogleFonts.inter().fontFamily!;
+  // Base text theme using Inter (modern, highly readable)
+  static final TextTheme textTheme = GoogleFonts.interTextTheme();
 
-  // Heading Styles
-  static TextStyle get displayLarge => GoogleFonts.inter(
-    fontSize: 48,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -1.5,
+  // ========== DISPLAY STYLES (Large headings) ==========
+
+  static final TextStyle displayLarge = GoogleFonts.inter(
+    fontSize: 57,
+    fontWeight: FontWeight.w700, // Bold
+    letterSpacing: -0.25,
+    height: 1.12,
   );
 
-  static TextStyle get displayMedium => GoogleFonts.inter(
+  static final TextStyle displayMedium = GoogleFonts.inter(
+    fontSize: 45,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: 1.16,
+  );
+
+  static final TextStyle displaySmall = GoogleFonts.inter(
     fontSize: 36,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.5,
+    fontWeight: FontWeight.w600, // Semi-bold
+    letterSpacing: 0,
+    height: 1.22,
   );
 
-  static TextStyle get displaySmall =>
-      GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w600);
+  // ========== HEADLINE STYLES (Section headings) ==========
 
-  static TextStyle get headlineLarge => GoogleFonts.inter(
+  static final TextStyle headlineLarge = GoogleFonts.inter(
+    fontSize: 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: 1.25,
+  );
+
+  static final TextStyle headlineMedium = GoogleFonts.inter(
+    fontSize: 28,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+    height: 1.29,
+  );
+
+  static final TextStyle headlineSmall = GoogleFonts.inter(
     fontSize: 24,
     fontWeight: FontWeight.w600,
-    letterSpacing: 0.25,
+    letterSpacing: 0,
+    height: 1.33,
   );
 
-  static TextStyle get headlineMedium =>
-      GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600);
+  // ========== TITLE STYLES (Card titles, list items) ==========
 
-  static TextStyle get headlineSmall =>
-      GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600);
+  static final TextStyle titleLarge = GoogleFonts.inter(
+    fontSize: 22,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+    height: 1.27,
+  );
 
-  // Body Styles
-  static TextStyle get bodyLarge => GoogleFonts.inter(
+  static final TextStyle titleMedium = GoogleFonts.inter(
     fontSize: 16,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.5,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.15,
+    height: 1.50,
   );
 
-  static TextStyle get bodyMedium => GoogleFonts.inter(
+  static final TextStyle titleSmall = GoogleFonts.inter(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.1,
+    height: 1.43,
+  );
+
+  // ========== BODY STYLES (Paragraphs, descriptions) ==========
+
+  static final TextStyle bodyLarge = GoogleFonts.inter(
+    fontSize: 16,
+    fontWeight: FontWeight.w400, // Regular
+    letterSpacing: 0.5,
+    height: 1.50,
+  );
+
+  static final TextStyle bodyMedium = GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.25,
+    height: 1.43,
   );
 
-  static TextStyle get bodySmall => GoogleFonts.inter(
+  static final TextStyle bodySmall = GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.4,
+    height: 1.33,
   );
 
-  // Label Styles
-  static TextStyle get labelLarge => GoogleFonts.inter(
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.1,
-  );
+  // ========== LABEL STYLES (Buttons, tabs, badges) ==========
 
-  static TextStyle get labelMedium => GoogleFonts.inter(
-    fontSize: 12,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.5,
-  );
-
-  static TextStyle get labelSmall => GoogleFonts.inter(
-    fontSize: 10,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.5,
-  );
-
-  // Risk Score Typography
-  static TextStyle get riskScoreLarge => GoogleFonts.inter(
-    fontSize: 64,
-    fontWeight: FontWeight.w800,
-    letterSpacing: -2,
-  );
-
-  static TextStyle get riskScoreMedium => GoogleFonts.inter(
-    fontSize: 40,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -1,
-  );
-
-  static TextStyle get riskLabel => GoogleFonts.inter(
+  static final TextStyle labelLarge = GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w600,
-    letterSpacing: 1.2,
+    letterSpacing: 0.1,
+    height: 1.43,
+  );
+
+  static final TextStyle labelMedium = GoogleFonts.inter(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.5,
+    height: 1.33,
+  );
+
+  static final TextStyle labelSmall = GoogleFonts.inter(
+    fontSize: 11,
+    fontWeight: FontWeight.w500, // Medium
+    letterSpacing: 0.5,
+    height: 1.45,
+  );
+
+  // ========== CUSTOM STYLES FOR SPECIFIC USE CASES ==========
+
+  /// Risk score number - large, bold, eye-catching
+  static final TextStyle riskScoreLarge = GoogleFonts.inter(
+    fontSize: 72,
+    fontWeight: FontWeight.w800, // Extra bold
+    letterSpacing: -2,
+    height: 1.0,
+  );
+
+  /// Risk score medium - for cards
+  static final TextStyle riskScoreMedium = GoogleFonts.inter(
+    fontSize: 48,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1,
+    height: 1.0,
+  );
+
+  /// Stat numbers - dashboard metrics
+  static final TextStyle statNumber = GoogleFonts.inter(
+    fontSize: 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+    height: 1.2,
+  );
+
+  /// Stat label - dashboard metric labels
+  static final TextStyle statLabel = GoogleFonts.inter(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.8,
+    height: 1.4,
+  );
+
+  /// Button text - uppercase, bold, spaced
+  static final TextStyle buttonText = GoogleFonts.inter(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.25,
+    height: 1.0,
+  );
+
+  /// Chip/Badge text - small, semi-bold
+  static final TextStyle chipText = GoogleFonts.inter(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.5,
+    height: 1.0,
+  );
+
+  /// Overline text - small caps style for categories
+  static final TextStyle overline = GoogleFonts.inter(
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.5,
+    height: 1.6,
+  );
+
+  /// Caption text - very small supplementary text
+  static final TextStyle caption = GoogleFonts.inter(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.4,
+    height: 1.36,
+  );
+
+  /// Phone number display - monospace for better readability
+  static final TextStyle phoneNumber = GoogleFonts.robotoMono(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.5,
+    height: 1.5,
+  );
+
+  /// Timestamp - subtle, smaller
+  static final TextStyle timestamp = GoogleFonts.inter(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.3,
+    height: 1.45,
+    fontStyle: FontStyle.italic,
+  );
+
+  /// Alert text - attention-grabbing
+  static final TextStyle alert = GoogleFonts.inter(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.25,
+    height: 1.5,
   );
 }

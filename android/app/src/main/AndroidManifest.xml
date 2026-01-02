@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     
+    
     <!-- Phone and Call Permissions -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <uses-permission android:name="android.permission.READ_CALL_LOG"/>
@@ -23,6 +24,18 @@
     
     <!-- Vibrate for alerts -->
     <uses-permission android:name="android.permission.VIBRATE"/>
+    
+    <!-- Boot permission for auto-restart -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    
+    <!-- Battery Optimization Exemption -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    
+    <!-- SMS for auto-response to blocked calls -->
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+    
+    <!-- Answer phone calls for blocking -->
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS"/>
     
     <application
         android:label="RiskGuard"
@@ -68,6 +81,7 @@
             </intent-filter>
         </activity>
         
+        
         <!-- Call State Receiver -->
         <receiver
             android:name=".CallStateReceiver"
@@ -76,6 +90,30 @@
             <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE"/>
                 <action android:name="android.intent.action.NEW_OUTGOING_CALL"/>
+            </intent-filter>
+        </receiver>
+        
+        <!-- Boot Receiver for auto-restart after device reboot -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+        
+        <!-- Notification Action Receiver -->
+        <receiver
+            android:name=".NotificationActionReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.personal.ACTION_BLOCK"/>
+                <action android:name="com.example.personal.ACTION_SAVE"/>
+                <action android:name="com.example.personal.ACTION_REPORT"/>
+                <action android:name="com.example.personal.ACTION_VIEW_DETAILS"/>
+                <action android:name="com.example.personal.ACTION_VIEW_REPORT"/>
             </intent-filter>
         </receiver>
         

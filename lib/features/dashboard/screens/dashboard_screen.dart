@@ -179,33 +179,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildQuickActions() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: QuickActionButton(
-            icon: Icons.message_outlined,
-            label: 'Analyze\nMessage',
-            color: AppColors.info,
-            onTap: () => _navigateToMessageAnalysis(),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: QuickActionButton(
+                icon: Icons.analytics,
+                label: 'Overall\nAnalysis',
+                color: AppColors.primary,
+                onTap: () => _navigateToOverallAnalysis(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: QuickActionButton(
+                icon: Icons.message_outlined,
+                label: 'Analyze\nMessage',
+                color: AppColors.info,
+                onTap: () => _navigateToMessageAnalysis(),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: QuickActionButton(
-            icon: Icons.mic_outlined,
-            label: 'Voice\nAnalysis',
-            color: AppColors.warning,
-            onTap: () => _navigateToVoiceAnalysis(),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: QuickActionButton(
-            icon: Icons.videocam_outlined,
-            label: 'Video\nCheck',
-            color: AppColors.error,
-            onTap: () => _navigateToVideoAnalysis(),
-          ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: QuickActionButton(
+                icon: Icons.mic_outlined,
+                label: 'Voice\nAnalysis',
+                color: AppColors.warning,
+                onTap: () => _navigateToVoiceAnalysis(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: QuickActionButton(
+                icon: Icons.videocam_outlined,
+                label: 'Video\nCheck',
+                color: AppColors.error,
+                onTap: () => _navigateToVideoAnalysis(),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -397,13 +414,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _navigateToVideoAnalysis() {
-    // TODO: Navigate to video analysis screen when implemented
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Video analysis coming soon!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    Navigator.pushNamed(context, '/video-analysis');
+  }
+
+  void _navigateToOverallAnalysis() {
+    Navigator.pushNamed(context, '/overall-analysis');
   }
 }

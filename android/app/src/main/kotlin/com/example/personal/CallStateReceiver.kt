@@ -52,9 +52,10 @@ class CallStateReceiver : BroadcastReceiver() {
                     // Outgoing call - number comes from NEW_OUTGOING_CALL
                     isIncoming = false
                 }
+                
                 lastState = TelephonyManager.CALL_STATE_OFFHOOK
                 
-                // For outgoing calls, the number is already set by handleOutgoingCall
+                // Update overlay service
                 lastPhoneNumber?.let { number ->
                     if (number.isNotEmpty()) {
                         updateOverlayService(context, number, isIncoming)
@@ -64,12 +65,27 @@ class CallStateReceiver : BroadcastReceiver() {
             TelephonyManager.EXTRA_STATE_IDLE -> {
                 // Call ended
                 lastState = TelephonyManager.CALL_STATE_IDLE
-                stopOverlayService(context)
                 
                 // Notify Flutter about call end
                 lastPhoneNumber?.let { number ->
                     MethodChannelHandler.sendCallEnded(number, isIncoming)
+                    
+                    // TODO: Re-enable after fixing build
+                    // Send post-call notification for high-risk calls
+                    // android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    //     sendPostCallNotification(context, number, isIncoming)
+                    // }, 500)
+                    
+                    // Show post-call details after a short delay (1 second)
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        showPostCallDetails(context, number)
+                    }, 1000)
                 }
+                
+                // Stop overlay after post-call details are shown or timeout
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    stopOverlayService(context)
+                }, 6000) // 6 seconds total (1 second delay + 5 seconds display)
                 
                 lastPhoneNumber = null
                 isIncoming = false
@@ -132,6 +148,20 @@ class CallStateReceiver : BroadcastReceiver() {
             context.startService(serviceIntent)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stop overlay service", e)
+        }
+    }
+    
+    private fun showPostCallDetails(context: Context, phoneNumber: String) {
+        Log.d(TAG, "Showing post-call details for: $phoneNumber")
+        
+        val serviceIntent = Intent(context, CallOverlayService::class.java).apply {
+            action = CallOverlayService.ACTION_SHOW_POST_CALL_DETAILS
+        }
+        
+        try {
+            context.startService(serviceIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to show post-call details", e)
         }
     }
 }

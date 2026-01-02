@@ -29,6 +29,9 @@ object MethodChannelHandler {
     fun initialize(flutterEngine: FlutterEngine, context: Context) {
         appContext = context.applicationContext
         
+        // Initialize protection state manager
+        ProtectionStateManager.initialize(context.applicationContext)
+        
         methodChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             CHANNEL_NAME
@@ -99,6 +102,18 @@ object MethodChannelHandler {
             "getCurrentRecordingPath" -> {
                 result.success(CallOverlayService.currentRecordingPath)
             }
+            "isProtectionEnabled" -> {
+                val enabled = ProtectionStateManager.isProtectionEnabled()
+                result.success(enabled)
+            }
+            "checkBatteryOptimization" -> {
+                val isOptimized = checkBatteryOptimization()
+                result.success(isOptimized)
+            }
+            "requestBatteryOptimizationExemption" -> {
+                requestBatteryOptimizationExemption()
+                result.success(null)
+            }
             else -> {
                 result.notImplemented()
             }
@@ -112,7 +127,9 @@ object MethodChannelHandler {
         return try {
             Log.d(TAG, "Call monitoring started")
             // The BroadcastReceiver is registered in AndroidManifest
-            // No additional action needed here
+            // Save the protection enabled state
+            ProtectionStateManager.setProtectionEnabled(true)
+            Log.d(TAG, "Protection state saved as enabled")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start call monitoring", e)
@@ -126,6 +143,9 @@ object MethodChannelHandler {
     private fun stopCallMonitoring(): Boolean {
         return try {
             Log.d(TAG, "Call monitoring stopped")
+            // Save the protection disabled state
+            ProtectionStateManager.setProtectionEnabled(false)
+            Log.d(TAG, "Protection state saved as disabled")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to stop call monitoring", e)
@@ -223,6 +243,42 @@ object MethodChannelHandler {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)
+        }
+    }
+    
+    /**
+     * Check if battery optimization is enabled for this app
+     * Returns true if app IS being optimized (bad for background services)
+     * Returns false if app is NOT being optimized (exempted - good!)
+     */
+    private fun checkBatteryOptimization(): Boolean {
+        val context = appContext ?: return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            return !powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        }
+        return false
+    }
+    
+    /**
+     * Request battery optimization exemption
+     * Opens system settings for user to disable optimization
+     */
+    private fun requestBatteryOptimizationExemption() {
+        val context = appContext ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val intent = Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    android.net.Uri.parse("package:${context.packageName}")
+                ).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
+                Log.d(TAG, "Battery optimization exemption requested")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to request battery optimization exemption", e)
+            }
         }
     }
     
@@ -328,6 +384,64 @@ object MethodChannelHandler {
                 mapOf(
                     "filePath" to filePath
                 )
+            )
+        }
+    }
+    
+    /**
+     * Send contact saved event to Flutter
+     */
+    fun sendContactSaved(phoneNumber: String, name: String, email: String?, category: String?) {
+        mainHandler.post {
+            methodChannel?.invokeMethod(
+                "onContactSaved",
+                mapOf(
+                    "phoneNumber" to phoneNumber,
+                    "name" to name,
+                    "email" to email,
+                    "category" to category
+                )
+            )
+        }
+    }
+    
+    /**
+     * Send contact updated event to Flutter
+     */
+    fun sendContactUpdated(phoneNumber: String, name: String, email: String?, category: String?) {
+        mainHandler.post {
+            methodChannel?.invokeMethod(
+                "onContactUpdated",
+                mapOf(
+                    "phoneNumber" to phoneNumber,
+                    "name" to name,
+                    "email" to email,
+                    "category" to category
+                )
+            )
+        }
+    }
+    
+    /**
+     * Send number blocked event to Flutter
+     */
+    fun sendNumberBlocked(phoneNumber: String) {
+        mainHandler.post {
+            methodChannel?.invokeMethod(
+                "onNumberBlocked",
+                mapOf("phoneNumber" to phoneNumber)
+            )
+        }
+    }
+    
+    /**
+     * Send number reported event to Flutter
+     */
+    fun sendNumberReported(phoneNumber: String) {
+        mainHandler.post {
+            methodChannel?.invokeMethod(
+                "onNumberReported",
+                mapOf("phoneNumber" to phoneNumber)
             )
         }
     }

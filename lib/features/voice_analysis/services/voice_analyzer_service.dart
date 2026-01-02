@@ -4,6 +4,33 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import '../../../core/constants/app_constants.dart';
 
+/// Voice classification types
+enum VoiceClassification { human, aiGenerated, uncertain }
+
+extension VoiceClassificationExtension on VoiceClassification {
+  String get label {
+    switch (this) {
+      case VoiceClassification.human:
+        return 'Human Voice';
+      case VoiceClassification.aiGenerated:
+        return 'AI Generated';
+      case VoiceClassification.uncertain:
+        return 'Uncertain';
+    }
+  }
+
+  String get icon {
+    switch (this) {
+      case VoiceClassification.human:
+        return '👤';
+      case VoiceClassification.aiGenerated:
+        return '🤖';
+      case VoiceClassification.uncertain:
+        return '❓';
+    }
+  }
+}
+
 /// Result of voice analysis
 class VoiceAnalysisResult {
   final double syntheticProbability;
@@ -11,6 +38,7 @@ class VoiceAnalysisResult {
   final List<String> detectedPatterns;
   final String explanation;
   final bool isLikelyAI;
+  final VoiceClassification classification;
 
   VoiceAnalysisResult({
     required this.syntheticProbability,
@@ -18,15 +46,18 @@ class VoiceAnalysisResult {
     required this.detectedPatterns,
     required this.explanation,
     required this.isLikelyAI,
+    required this.classification,
   });
 
   factory VoiceAnalysisResult.fromJson(Map<String, dynamic> json) {
+    final syntheticProb = (json['syntheticProbability'] as num).toDouble();
     return VoiceAnalysisResult(
-      syntheticProbability: (json['syntheticProbability'] as num).toDouble(),
+      syntheticProbability: syntheticProb,
       confidence: (json['confidence'] as num).toDouble(),
       detectedPatterns: List<String>.from(json['detectedPatterns'] ?? []),
       explanation: json['explanation'] as String? ?? '',
       isLikelyAI: json['isLikelyAI'] as bool? ?? false,
+      classification: _classifyVoice(syntheticProb),
     );
   }
 
@@ -36,7 +67,18 @@ class VoiceAnalysisResult {
     'detectedPatterns': detectedPatterns,
     'explanation': explanation,
     'isLikelyAI': isLikelyAI,
+    'classification': classification.name,
   };
+
+  static VoiceClassification _classifyVoice(double syntheticProbability) {
+    if (syntheticProbability < 0.35) {
+      return VoiceClassification.human;
+    } else if (syntheticProbability > 0.65) {
+      return VoiceClassification.aiGenerated;
+    } else {
+      return VoiceClassification.uncertain;
+    }
+  }
 }
 
 /// Service for analyzing voice recordings
@@ -126,23 +168,23 @@ class VoiceAnalyzerService {
 
     String explanation;
     bool isLikelyAI;
+    VoiceClassification classification;
 
-    if (syntheticProb < 0.2) {
+    if (syntheticProb < 0.35) {
       explanation =
           'Voice appears natural with normal variations and human speech patterns.';
       isLikelyAI = false;
-    } else if (syntheticProb < 0.4) {
+      classification = VoiceClassification.human;
+    } else if (syntheticProb < 0.65) {
       explanation =
-          'Voice shows some unusual patterns but is likely human. Minor irregularities detected.';
+          'Voice shows some unusual patterns. Detection is uncertain - could be human with artifacts or AI-generated.';
       isLikelyAI = false;
-    } else if (syntheticProb < 0.6) {
-      explanation =
-          'Moderate indicators suggest possible AI-generation. Exercise caution.';
-      isLikelyAI = true;
+      classification = VoiceClassification.uncertain;
     } else {
       explanation =
-          'Strong synthetic voice indicators detected. This voice may be AI-generated.';
+          'Strong synthetic voice indicators detected. This voice is likely AI-generated.';
       isLikelyAI = true;
+      classification = VoiceClassification.aiGenerated;
     }
 
     return VoiceAnalysisResult(
@@ -151,6 +193,7 @@ class VoiceAnalyzerService {
       detectedPatterns: patterns,
       explanation: explanation,
       isLikelyAI: isLikelyAI,
+      classification: classification,
     );
   }
 
@@ -161,6 +204,7 @@ class VoiceAnalyzerService {
       detectedPatterns: [],
       explanation: 'Unable to analyze. Please try again.',
       isLikelyAI: false,
+      classification: VoiceClassification.uncertain,
     );
   }
 }

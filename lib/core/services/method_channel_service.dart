@@ -6,6 +6,20 @@ typedef CallStateCallback = void Function(String phoneNumber, bool isIncoming);
 typedef CallEndedCallback = void Function();
 typedef RecordingStartedCallback = void Function(String filePath);
 typedef RecordingStoppedCallback = void Function(String filePath);
+typedef ContactSavedCallback =
+    void Function(
+      String phoneNumber,
+      String name,
+      String? email,
+      String? category,
+    );
+typedef ContactUpdatedCallback =
+    void Function(
+      String phoneNumber,
+      String name,
+      String? email,
+      String? category,
+    );
 
 class MethodChannelService {
   static const MethodChannel _channel = MethodChannel(
@@ -23,6 +37,8 @@ class MethodChannelService {
   CallEndedCallback? _onCallEnded;
   RecordingStartedCallback? _onRecordingStarted;
   RecordingStoppedCallback? _onRecordingStopped;
+  ContactSavedCallback? _onContactSaved;
+  ContactUpdatedCallback? _onContactUpdated;
 
   /// Initialize method channel and set up listeners
   void initialize({
@@ -30,11 +46,15 @@ class MethodChannelService {
     required CallEndedCallback onCallEnded,
     RecordingStartedCallback? onRecordingStarted,
     RecordingStoppedCallback? onRecordingStopped,
+    ContactSavedCallback? onContactSaved,
+    ContactUpdatedCallback? onContactUpdated,
   }) {
     _onCallStateChanged = onCallStateChanged;
     _onCallEnded = onCallEnded;
     _onRecordingStarted = onRecordingStarted;
     _onRecordingStopped = onRecordingStopped;
+    _onContactSaved = onContactSaved;
+    _onContactUpdated = onContactUpdated;
 
     _channel.setMethodCallHandler(_handleMethodCall);
   }
@@ -60,6 +80,22 @@ class MethodChannelService {
         final args = call.arguments as Map<dynamic, dynamic>;
         final filePath = args['filePath'] as String? ?? '';
         _onRecordingStopped?.call(filePath);
+        break;
+      case 'onContactSaved':
+        final args = call.arguments as Map<dynamic, dynamic>;
+        final phoneNumber = args['phoneNumber'] as String? ?? '';
+        final name = args['name'] as String? ?? '';
+        final email = args['email'] as String?;
+        final category = args['category'] as String?;
+        _onContactSaved?.call(phoneNumber, name, email, category);
+        break;
+      case 'onContactUpdated':
+        final args = call.arguments as Map<dynamic, dynamic>;
+        final phoneNumber = args['phoneNumber'] as String? ?? '';
+        final name = args['name'] as String? ?? '';
+        final email = args['email'] as String?;
+        final category = args['category'] as String?;
+        _onContactUpdated?.call(phoneNumber, name, email, category);
         break;
       default:
         throw MissingPluginException('Method ${call.method} not implemented');
@@ -195,6 +231,41 @@ class MethodChannelService {
     } on PlatformException catch (e) {
       _log('Failed to analyze phone number: ${e.message}');
       return {};
+    }
+  }
+
+  /// Check if protection is enabled (from saved state)
+  Future<bool> isProtectionEnabled() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('isProtectionEnabled');
+      return result ?? false;
+    } on PlatformException catch (e) {
+      _log('Failed to check protection state: ${e.message}');
+      return false;
+    }
+  }
+
+  /// Check if battery optimization is enabled
+  /// Returns true if app IS being optimized (needs exemption)
+  /// Returns false if app is NOT being optimized (already exempted)
+  Future<bool> checkBatteryOptimization() async {
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'checkBatteryOptimization',
+      );
+      return result ?? false;
+    } on PlatformException catch (e) {
+      _log('Failed to check battery optimization: ${e.message}');
+      return false;
+    }
+  }
+
+  /// Request battery optimization exemption
+  Future<void> requestBatteryOptimizationExemption() async {
+    try {
+      await _channel.invokeMethod('requestBatteryOptimizationExemption');
+    } on PlatformException catch (e) {
+      _log('Failed to request battery optimization exemption: ${e.message}');
     }
   }
 

@@ -8,9 +8,13 @@ import 'core/theme/app_theme.dart';
 import 'features/call_detection/providers/call_history_provider.dart';
 import 'features/voice_analysis/providers/voice_analysis_provider.dart';
 import 'features/message_analysis/providers/message_analysis_provider.dart';
+import 'features/video_analysis/providers/video_analysis_provider.dart';
+import 'features/risk_scoring/providers/overall_analysis_provider.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/voice_analysis/screens/voice_analysis_screen.dart';
 import 'features/message_analysis/screens/message_analysis_screen.dart';
+import 'features/video_analysis/screens/video_analysis_screen.dart';
+import 'features/risk_scoring/screens/overall_analysis_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +48,8 @@ class RiskGuardApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CallHistoryProvider()),
         ChangeNotifierProvider(create: (_) => VoiceAnalysisProvider()),
         ChangeNotifierProvider(create: (_) => MessageAnalysisProvider()),
+        ChangeNotifierProvider(create: (_) => VideoAnalysisProvider()),
+        ChangeNotifierProvider(create: (_) => OverallAnalysisProvider()),
       ],
       child: MaterialApp(
         title: 'RiskGuard',
@@ -55,6 +61,8 @@ class RiskGuardApp extends StatelessWidget {
         routes: {
           '/voice-analysis': (context) => const VoiceAnalysisScreen(),
           '/message-analysis': (context) => const MessageAnalysisScreen(),
+          '/video-analysis': (context) => const VideoAnalysisScreen(),
+          '/overall-analysis': (context) => const OverallAnalysisScreen(),
         },
       ),
     );

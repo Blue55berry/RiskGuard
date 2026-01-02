@@ -1,6 +1,7 @@
 /// Call history provider for state management
 import 'package:flutter/foundation.dart';
 import '../services/call_risk_service.dart';
+import '../../../core/services/method_channel_service.dart';
 
 class CallHistoryProvider extends ChangeNotifier {
   final CallRiskService _callRiskService = CallRiskService();
@@ -27,6 +28,31 @@ class CallHistoryProvider extends ChangeNotifier {
       _addToHistory(result);
       notifyListeners();
     });
+
+    // Restore saved protection state
+    _restoreProtectionState();
+  }
+
+  /// Restore protection state from native storage
+  Future<void> _restoreProtectionState() async {
+    try {
+      final methodChannelService = MethodChannelService();
+      final wasEnabled = await methodChannelService.isProtectionEnabled();
+
+      if (wasEnabled) {
+        print(
+          '[CallHistoryProvider] Protection was previously enabled, restoring...',
+        );
+        // Start monitoring automatically
+        _isMonitoring = await _callRiskService.startMonitoring();
+        notifyListeners();
+        print('[CallHistoryProvider] Protection restored: $_isMonitoring');
+      } else {
+        print('[CallHistoryProvider] Protection was not enabled previously');
+      }
+    } catch (e) {
+      print('[CallHistoryProvider] Failed to restore protection state: $e');
+    }
   }
 
   void _addToHistory(CallRiskResult result) {

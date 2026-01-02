@@ -3,10 +3,41 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/services/method_channel_service.dart';
 import '../../call_detection/providers/call_history_provider.dart';
 
-class ProtectionStatusCard extends StatelessWidget {
+class ProtectionStatusCard extends StatefulWidget {
   const ProtectionStatusCard({super.key});
+
+  @override
+  State<ProtectionStatusCard> createState() => _ProtectionStatusCardState();
+}
+
+class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
+  final _methodChannelService = MethodChannelService();
+  bool _isBatteryOptimized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBatteryOptimization();
+  }
+
+  Future<void> _checkBatteryOptimization() async {
+    final isOptimized = await _methodChannelService.checkBatteryOptimization();
+    if (mounted) {
+      setState(() {
+        _isBatteryOptimized = isOptimized;
+      });
+    }
+  }
+
+  Future<void> _requestBatteryExemption() async {
+    await _methodChannelService.requestBatteryOptimizationExemption();
+    // Recheck after a delay (user might have granted it)
+    await Future.delayed(const Duration(seconds: 2));
+    _checkBatteryOptimization();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +147,8 @@ class ProtectionStatusCard extends StatelessWidget {
               ),
               if (isActive) ...[
                 const SizedBox(height: 16),
+                _buildBatteryWarning(), // Battery optimization warning
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -132,6 +165,56 @@ class ProtectionStatusCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBatteryWarning() {
+    if (!_isBatteryOptimized) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withOpacity(0.5), width: 1),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.battery_alert, color: Colors.orange, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Battery Optimization Detected',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'May stop protection in background',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white70,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _requestBatteryExemption,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.orange,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            ),
+            child: const Text('Fix'),
+          ),
+        ],
+      ),
     );
   }
 

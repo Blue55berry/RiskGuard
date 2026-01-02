@@ -22,6 +22,9 @@ class VoiceAnalysisProvider extends ChangeNotifier {
   double _currentAmplitude = 0.0;
   double get currentAmplitude => _currentAmplitude;
 
+  List<double> _amplitudeHistory = [];
+  List<double> get amplitudeHistory => _amplitudeHistory;
+
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
@@ -39,6 +42,13 @@ class VoiceAnalysisProvider extends ChangeNotifier {
     // Listen to amplitude updates
     _recorder.amplitudeStream.listen((amplitude) {
       _currentAmplitude = amplitude;
+
+      // Track amplitude history for real-time graph (last 50 samples)
+      _amplitudeHistory.add(amplitude);
+      if (_amplitudeHistory.length > 50) {
+        _amplitudeHistory.removeAt(0);
+      }
+
       notifyListeners();
     });
   }
@@ -51,6 +61,7 @@ class VoiceAnalysisProvider extends ChangeNotifier {
   /// Start voice recording
   Future<bool> startRecording() async {
     _errorMessage = null;
+    _amplitudeHistory.clear(); // Clear previous amplitude data
     final success = await _recorder.startRecording();
     if (!success) {
       _errorMessage =

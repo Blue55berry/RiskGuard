@@ -84,9 +84,6 @@ class CallRiskService {
   CallRiskResult? _currentCallRisk;
   CallRiskResult? get currentCallRisk => _currentCallRisk;
 
-  // Current recording path
-  String? _currentRecordingPath;
-
   /// Initialize the service and set up listeners
   void initialize() {
     _methodChannel.initialize(
@@ -94,6 +91,8 @@ class CallRiskService {
       onCallEnded: _handleCallEnded,
       onRecordingStarted: _handleRecordingStarted,
       onRecordingStopped: _handleRecordingStopped,
+      onContactSaved: _handleContactSaved,
+      onContactUpdated: _handleContactUpdated,
     );
   }
 
@@ -122,14 +121,12 @@ class CallRiskService {
   void _handleCallEnded() {
     _log('Call ended');
     _currentCallRisk = null;
-    _currentRecordingPath = null;
     _methodChannel.hideRiskOverlay();
   }
 
   /// Handle recording started event from native
   void _handleRecordingStarted(String filePath) {
     _log('Recording started: $filePath');
-    _currentRecordingPath = filePath;
 
     // Update current call result with recording path
     if (_currentCallRisk != null) {
@@ -184,6 +181,44 @@ class CallRiskService {
       }
     } catch (e) {
       _log('AI Analysis failed: $e');
+    }
+  }
+
+  /// Handle contact saved event from native
+  void _handleContactSaved(
+    String phoneNumber,
+    String name,
+    String? email,
+    String? category,
+  ) {
+    _log(
+      'Contact saved: $name ($phoneNumber) - email: $email, category: $category',
+    );
+
+    // If this is for the current call, update the call risk result
+    if (_currentCallRisk != null &&
+        _currentCallRisk!.phoneNumber == phoneNumber) {
+      // Broadcast the update to listeners
+      _callStateController.add(_currentCallRisk!);
+    }
+  }
+
+  /// Handle contact updated event from native
+  void _handleContactUpdated(
+    String phoneNumber,
+    String name,
+    String? email,
+    String? category,
+  ) {
+    _log(
+      'Contact updated: $name ($phoneNumber) - email: $email, category: $category',
+    );
+
+    // If this is for the current call, update the call risk result
+    if (_currentCallRisk != null &&
+        _currentCallRisk!.phoneNumber == phoneNumber) {
+      // Broadcast the update to listeners
+      _callStateController.add(_currentCallRisk!);
     }
   }
 
