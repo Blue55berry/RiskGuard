@@ -1,4 +1,6 @@
 /// Feature Card widget
+library;
+
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -43,7 +45,7 @@ class FeatureCard extends StatelessWidget {
           color: AppColors.cardDark,
           borderRadius: BorderRadius.circular(16),
           border: isActive
-              ? Border.all(color: statusColor.withOpacity(0.3), width: 1)
+              ? Border.all(color: statusColor.withValues(alpha: 0.3), width: 1)
               : null,
         ),
         child: Row(
@@ -52,7 +54,7 @@ class FeatureCard extends StatelessWidget {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
+                color: statusColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: statusColor, size: 26),
@@ -78,7 +80,7 @@ class FeatureCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.15),
+                          color: statusColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import '../../../core/constants/risk_levels.dart';
 import '../../../core/services/method_channel_service.dart';
 import '../../voice_analysis/services/voice_analyzer_service.dart';
@@ -291,7 +292,6 @@ class CallRiskService {
 
   /// Check if phone number is in contacts (placeholder)
   Future<bool> _isKnownContact(String phoneNumber) async {
-    // TODO: Implement contact lookup
     return false;
   }
 
@@ -350,7 +350,6 @@ class CallRiskService {
   }
 
   void _log(String message) {
-    // ignore: avoid_print
-    print('[CallRiskService] $message');
+    developer.log('[CallRiskService] $message');
   }
 }

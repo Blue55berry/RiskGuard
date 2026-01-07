@@ -1,17 +1,12 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:image/image.dart' as img;
 import '../../../core/constants/app_constants.dart';
 
 /// Video threat types
-enum VideoThreatType {
-  deepfake,
-  faceSwap,
-  lipSync,
-  manipulation,
-  safe,
-}
+enum VideoThreatType { deepfake, faceSwap, lipSync, manipulation, safe }
 
 extension VideoThreatExtension on VideoThreatType {
   String get label {
@@ -77,23 +72,24 @@ class VideoAnalysisResult {
       detectedThreats: [VideoThreatType.safe],
       manipulationPatterns: [],
       analyzedFrames: 0,
-      explanation: 'This video appears to be authentic. No manipulation detected.',
+      explanation:
+          'This video appears to be authentic. No manipulation detected.',
       isAuthentic: true,
       analyzedAt: DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'videoPath': videoPath,
-        'deepfakeProbability': deepfakeProbability,
-        'confidence': confidence,
-        'detectedThreats': detectedThreats.map((t) => t.name).toList(),
-        'manipulationPatterns': manipulationPatterns,
-        'analyzedFrames': analyzedFrames,
-        'explanation': explanation,
-        'isAuthentic': isAuthentic,
-        'analyzedAt': analyzedAt.toIso8601String(),
-      };
+    'videoPath': videoPath,
+    'deepfakeProbability': deepfakeProbability,
+    'confidence': confidence,
+    'detectedThreats': detectedThreats.map((t) => t.name).toList(),
+    'manipulationPatterns': manipulationPatterns,
+    'analyzedFrames': analyzedFrames,
+    'explanation': explanation,
+    'isAuthentic': isAuthentic,
+    'analyzedAt': analyzedAt.toIso8601String(),
+  };
 }
 
 /// Service for analyzing videos for deepfakes and manipulation
@@ -114,14 +110,16 @@ class VideoAnalyzerService {
         try {
           return await _cloudAnalysis(videoPath);
         } catch (e) {
-          print('Cloud video analysis failed, falling back to local: $e');
+          developer.log(
+            'Cloud video analysis failed, falling back to local: $e',
+          );
         }
       }
 
       // Fallback to local analysis
       return await _localAnalysis(videoPath);
     } catch (e) {
-      print('Video analysis error: $e');
+      developer.log('Video analysis error: $e');
       return VideoAnalysisResult.safe(videoPath);
     }
   }
@@ -151,11 +149,14 @@ class VideoAnalyzerService {
         videoPath: videoPath,
         deepfakeProbability: (data['deepfakeProbability'] as num).toDouble(),
         confidence: (data['confidence'] as num).toDouble(),
-        detectedThreats: (data['threats'] as List?)
-                ?.map((t) => VideoThreatType.values.firstWhere(
-                      (e) => e.name == t,
-                      orElse: () => VideoThreatType.safe,
-                    ))
+        detectedThreats:
+            (data['threats'] as List?)
+                ?.map(
+                  (t) => VideoThreatType.values.firstWhere(
+                    (e) => e.name == t,
+                    orElse: () => VideoThreatType.safe,
+                  ),
+                )
                 .toList() ??
             [],
         manipulationPatterns: List<String>.from(data['patterns'] ?? []),
@@ -166,17 +167,19 @@ class VideoAnalyzerService {
       );
     }
 
-    throw Exception('Video analysis failed with status: ${response.statusCode}');
+    throw Exception(
+      'Video analysis failed with status: ${response.statusCode}',
+    );
   }
 
   /// Local on-device analysis (pattern-based for demo)
   /// In production, this would use TensorFlow Lite or similar ML model
   Future<VideoAnalysisResult> _localAnalysis(String videoPath) async {
-    print('Starting local video analysis...');
+    developer.log('Starting local video analysis...');
 
     // Simulate processing with frame extraction
     final frames = await _extractFrames(videoPath, count: 5);
-    print('Extracted ${frames.length} frames');
+    developer.log('Extracted ${frames.length} frames');
 
     // Simulate analysis delay
     await Future.delayed(const Duration(seconds: 3));
@@ -241,7 +244,10 @@ class VideoAnalyzerService {
 
   /// Extract frames from video for analysis
   /// This is a simplified version - production would use actual video processing
-  Future<List<img.Image>> _extractFrames(String videoPath, {int count = 5}) async {
+  Future<List<img.Image>> _extractFrames(
+    String videoPath, {
+    int count = 5,
+  }) async {
     final frames = <img.Image>[];
 
     // For demo purposes, we simulate frame extraction
@@ -253,9 +259,9 @@ class VideoAnalyzerService {
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Return empty list for demo (in real implementation, extract actual frames)
-      print('Frame extraction simulated (${count} frames)');
+      developer.log('Frame extraction simulated ($count frames)');
     } catch (e) {
-      print('Frame extraction error: $e');
+      developer.log('Frame extraction error: $e');
     }
 
     return frames;

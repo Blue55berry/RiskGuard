@@ -1,3 +1,5 @@
+library;
+
 import 'dart:async';
 import '../../../core/constants/risk_levels.dart';
 import '../../call_detection/services/call_risk_service.dart';
@@ -53,7 +55,6 @@ class AnalysisTrend {
   });
 }
 
-/// Service that aggregates all analysis data
 class OverallAnalysisService {
   final CallRiskService _callRiskService = CallRiskService();
   final VoiceAnalyzerService _voiceAnalyzer = VoiceAnalyzerService();

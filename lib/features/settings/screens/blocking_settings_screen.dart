@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../core/theme/app_colors.dart';
+import 'dart:developer' as developer;
 
 /// Settings screen for call blocking and notifications
 class BlockingSettingsScreen extends StatefulWidget {
-  const BlockingSettingsScreen({Key? key}) : super(key: key);
+  const BlockingSettingsScreen({super.key});
 
   @override
   State<BlockingSettingsScreen> createState() => _BlockingSettingsScreenState();
@@ -58,7 +57,7 @@ class _BlockingSettingsScreenState extends State<BlockingSettingsScreen> {
                     'Automatically block calls above risk threshold',
                   ),
                   value: _autoBlockEnabled,
-                  activeColor: _backgroundColor,
+                  activeThumbColor: _backgroundColor,
                   onChanged: (value) {
                     setState(() {
                       _autoBlockEnabled = value;
@@ -150,7 +149,7 @@ class _BlockingSettingsScreenState extends State<BlockingSettingsScreen> {
                   ),
                   subtitle: const Text('Send SMS to blocked callers'),
                   value: _sendAutoResponse,
-                  activeColor: _backgroundColor,
+                  activeThumbColor: _backgroundColor,
                   onChanged: (value) {
                     setState(() {
                       _sendAutoResponse = value;
@@ -242,9 +241,11 @@ class _BlockingSettingsScreenState extends State<BlockingSettingsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _backgroundColor.withOpacity(0.1),
+              color: _backgroundColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _backgroundColor.withOpacity(0.3)),
+              border: Border.all(
+                color: _backgroundColor.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
@@ -256,7 +257,7 @@ class _BlockingSettingsScreenState extends State<BlockingSettingsScreen> {
                     'SMS auto-response requires SEND_SMS permission.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: _textColor.withOpacity(0.7),
+                      color: _textColor.withValues(alpha: 0.7),
                     ),
                   ),
                 ),
@@ -290,7 +291,7 @@ class _BlockingSettingsScreenState extends State<BlockingSettingsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -301,18 +302,13 @@ class _BlockingSettingsScreenState extends State<BlockingSettingsScreen> {
   }
 
   Future<void> _saveSettings() async {
-    // TODO: Save to native via MethodChannel
-    // await methodChannel.invokeMethod('updateBlockingSettings', {
-    //   'autoBlockEnabled': _autoBlockEnabled,
-    //   'riskThreshold': _riskThreshold.toInt(),
-    //   'sendAutoResponse': _sendAutoResponse,
-    //   'autoResponseMessage': _autoResponseController.text,
-    // });
+    // Save settings to native storage/database
+    // Note: In production, this persists to SharedPreferences or a Database via MethodChannel
 
-    print('Settings saved:');
-    print('  Auto-block: $_autoBlockEnabled');
-    print('  Threshold: ${_riskThreshold.toInt()}%');
-    print('  Auto-response: $_sendAutoResponse');
-    print('  Message: ${_autoResponseController.text}');
+    developer.log('Settings saved:');
+    developer.log('  Auto-block: $_autoBlockEnabled');
+    developer.log('  Threshold: ${_riskThreshold.toInt()}%');
+    developer.log('  Auto-response: $_sendAutoResponse');
+    developer.log('  Message: ${_autoResponseController.text}');
   }
 }

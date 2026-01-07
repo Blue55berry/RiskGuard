@@ -131,24 +131,30 @@ class VoiceRecorderService {
     }
   }
 
-  Timer? _amplitudeTimer;
+  StreamSubscription? _recorderSubscription;
 
   void _startAmplitudeMonitoring() {
-    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 100), (
-      _,
-    ) async {
+    _recorder.setSubscriptionDuration(const Duration(milliseconds: 100));
+    _recorderSubscription = _recorder.onProgress!.listen((e) {
       if (_state == RecordingState.recording) {
-        // Simulate amplitude for UI visualization
-        final time = DateTime.now().millisecondsSinceEpoch;
-        final amplitude = 0.3 + 0.4 * (time % 1000) / 1000;
-        _amplitudeController.add(amplitude);
+        // Map decibels to 0.0 - 1.0 range
+        // decibels usually range from -60 (quiet) to 0 (loud) or similar
+        double level = e.decibels ?? 0.0;
+
+        // Normalize: assuming -60 is floor and 0 is ceiling
+        // We'll use a more dynamic normalization
+        double normalized = (level + 60) / 60;
+        if (normalized < 0.1) normalized = 0.1; // Base floor for UI
+        if (normalized > 1.0) normalized = 1.0;
+
+        _amplitudeController.add(normalized);
       }
     });
   }
 
   void _stopAmplitudeMonitoring() {
-    _amplitudeTimer?.cancel();
-    _amplitudeTimer = null;
+    _recorderSubscription?.cancel();
+    _recorderSubscription = null;
   }
 
   /// Check if currently recording

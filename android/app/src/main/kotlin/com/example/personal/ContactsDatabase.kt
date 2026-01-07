@@ -206,6 +206,46 @@ class ContactsDatabase(context: Context) : SQLiteOpenHelper(
             false
         }
     }
+
+    /**
+     * Get all saved contacts
+     */
+    fun getAllContacts(): List<SavedContact> {
+        val contacts = mutableListOf<SavedContact>()
+        try {
+            val db = readableDatabase
+            val cursor = db.query(
+                TABLE_CONTACTS,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "$COLUMN_SAVED_AT DESC"
+            )
+            
+            cursor.use {
+                while (it.moveToNext()) {
+                    contacts.add(
+                        SavedContact(
+                            id = it.getLong(it.getColumnIndexOrThrow(COLUMN_ID)),
+                            phoneNumber = it.getString(it.getColumnIndexOrThrow(COLUMN_PHONE)),
+                            name = it.getString(it.getColumnIndexOrThrow(COLUMN_NAME)),
+                            email = it.getStringOrNull(it.getColumnIndexOrThrow(COLUMN_EMAIL)),
+                            category = it.getStringOrNull(it.getColumnIndexOrThrow(COLUMN_CATEGORY)),
+                            company = it.getStringOrNull(it.getColumnIndexOrThrow(COLUMN_COMPANY)),
+                            notes = it.getStringOrNull(it.getColumnIndexOrThrow(COLUMN_NOTES)),
+                            tags = it.getStringOrNull(it.getColumnIndexOrThrow(COLUMN_TAGS)),
+                            savedAt = it.getLong(it.getColumnIndexOrThrow(COLUMN_SAVED_AT))
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting all contacts", e)
+        }
+        return contacts
+    }
 }
 
 /**

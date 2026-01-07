@@ -1,5 +1,7 @@
 /// RiskGuard - Real-Time AI-Based Digital Risk Detection System
-/// Main entry point for the Flutter application
+/// RiskGuard - AI-Powered Call Protection Application
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +17,9 @@ import 'features/voice_analysis/screens/voice_analysis_screen.dart';
 import 'features/message_analysis/screens/message_analysis_screen.dart';
 import 'features/video_analysis/screens/video_analysis_screen.dart';
 import 'features/risk_scoring/screens/overall_analysis_screen.dart';
+import 'features/contacts/screens/contacts_management_screen.dart';
+import 'features/call_detection/screens/enhanced_call_history_screen.dart';
+import 'features/contacts/screens/whitelist_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,6 +68,9 @@ class RiskGuardApp extends StatelessWidget {
           '/message-analysis': (context) => const MessageAnalysisScreen(),
           '/video-analysis': (context) => const VideoAnalysisScreen(),
           '/overall-analysis': (context) => const OverallAnalysisScreen(),
+          '/contacts-management': (context) => const ContactsManagementScreen(),
+          '/call-history': (context) => const EnhancedCallHistoryScreen(),
+          '/whitelist': (context) => const WhitelistScreen(),
         },
       ),
     );

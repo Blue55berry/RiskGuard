@@ -1,4 +1,6 @@
 /// Voice Analysis Provider for state management
+library;
+
 import 'package:flutter/foundation.dart';
 import '../services/voice_recorder_service.dart';
 import '../services/voice_analyzer_service.dart';
@@ -22,7 +24,7 @@ class VoiceAnalysisProvider extends ChangeNotifier {
   double _currentAmplitude = 0.0;
   double get currentAmplitude => _currentAmplitude;
 
-  List<double> _amplitudeHistory = [];
+  final List<double> _amplitudeHistory = [];
   List<double> get amplitudeHistory => _amplitudeHistory;
 
   String? _errorMessage;

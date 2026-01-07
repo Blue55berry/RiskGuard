@@ -1,3 +1,6 @@
+/// Provider for video analysis state management
+library;
+
 import 'package:flutter/foundation.dart';
 import '../services/video_analyzer_service.dart';
 

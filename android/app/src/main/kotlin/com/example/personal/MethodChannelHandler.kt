@@ -99,6 +99,10 @@ object MethodChannelHandler {
                 val analysis = analyzePhoneNumber(phoneNumber)
                 result.success(analysis)
             }
+            "getSavedContacts" -> {
+                val contacts = getSavedContacts()
+                result.success(contacts)
+            }
             "getCurrentRecordingPath" -> {
                 result.success(CallOverlayService.currentRecordingPath)
             }
@@ -113,6 +117,20 @@ object MethodChannelHandler {
             "requestBatteryOptimizationExemption" -> {
                 requestBatteryOptimizationExemption()
                 result.success(null)
+            }
+            "clearRecentCalls" -> {
+                val context = appContext
+                if (context != null) {
+                    val db = CallHistoryDatabase(context)
+                    val success = db.clearHistory()
+                    result.success(success)
+                } else {
+                    result.error("CONTEXT_NULL", "App context is null", null)
+                }
+            }
+            "getProtectionStats" -> {
+                val stats = getProtectionStats()
+                result.success(stats)
             }
             else -> {
                 result.notImplemented()
@@ -328,6 +346,56 @@ object MethodChannelHandler {
         )
     }
     
+    /**
+     * Get saved contacts from native database
+     */
+    private fun getSavedContacts(): List<Map<String, Any?>> {
+        val context = appContext ?: return emptyList()
+        val db = ContactsDatabase(context)
+        return db.getAllContacts().map {
+            mapOf(
+                "phoneNumber" to it.phoneNumber,
+                "name" to it.name,
+                "email" to it.email,
+                "category" to it.category,
+                "company" to it.company,
+                "notes" to it.notes,
+                "tags" to it.tags,
+                "savedAt" to it.savedAt
+            )
+        }
+    }
+    
+    /**
+     * Get protection statistics from call history
+     */
+    private fun getProtectionStats(): Map<String, Any> {
+        val context = appContext ?: return mapOf(
+            "threatsBlockedToday" to 0,
+            "threatsBlockedThisWeek" to 0,
+            "highRiskCallsCount" to 0,
+            "totalCallsCount" to 0
+        )
+        
+        return try {
+            val db = CallHistoryDatabase(context)
+            mapOf(
+                "threatsBlockedToday" to db.getThreatsBlockedToday(),
+                "threatsBlockedThisWeek" to db.getThreatsBlockedThisWeek(),
+                "highRiskCallsCount" to db.getHighRiskCallsCount(),
+                "totalCallsCount" to db.getTotalCallsCount()
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting protection stats", e)
+            mapOf(
+                "threatsBlockedToday" to 0,
+                "threatsBlockedThisWeek" to 0,
+                "highRiskCallsCount" to 0,
+                "totalCallsCount" to 0
+            )
+        }
+    }
+    
     // ========== Methods to send events to Flutter ==========
     
     /**
@@ -391,7 +459,7 @@ object MethodChannelHandler {
     /**
      * Send contact saved event to Flutter
      */
-    fun sendContactSaved(phoneNumber: String, name: String, email: String?, category: String?) {
+    fun sendContactSaved(phoneNumber: String, name: String, email: String?, category: String?, company: String? = null, notes: String? = null) {
         mainHandler.post {
             methodChannel?.invokeMethod(
                 "onContactSaved",
@@ -399,7 +467,9 @@ object MethodChannelHandler {
                     "phoneNumber" to phoneNumber,
                     "name" to name,
                     "email" to email,
-                    "category" to category
+                    "category" to category,
+                    "company" to company,
+                    "notes" to notes
                 )
             )
         }

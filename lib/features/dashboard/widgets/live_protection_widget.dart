@@ -1,32 +1,67 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/services/method_channel_service.dart';
 
 /// Live protection status widget for dashboard
 class LiveProtectionWidget extends StatefulWidget {
-  const LiveProtectionWidget({Key? key}) : super(key: key);
+  const LiveProtectionWidget({super.key});
 
   @override
   State<LiveProtectionWidget> createState() => _LiveProtectionWidgetState();
 }
 
 class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
+  final MethodChannelService _methodChannel = MethodChannelService();
   bool _isProtectionEnabled = true;
   int _threatsBlockedToday = 0;
-  int _activeCalls = 0;
+  int _threatsBlockedThisWeek = 0;
+  int _highRiskCallsCount = 0;
+  int _totalCallsCount = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadProtectionStatus();
+    // Refresh stats every 30 seconds
+    Future.delayed(const Duration(seconds: 30), _refreshStats);
   }
 
   Future<void> _loadProtectionStatus() async {
-    // TODO: Load actual values from service
-    setState(() {
-      _threatsBlockedToday = 3;
-      _activeCalls = 0;
-    });
+    setState(() => _isLoading = true);
+
+    final isEnabled = await _methodChannel.isProtectionEnabled();
+    final stats = await _methodChannel.getProtectionStatistics();
+
+    if (mounted) {
+      setState(() {
+        _isProtectionEnabled = isEnabled;
+        _threatsBlockedToday = stats['threatsBlockedToday'] ?? 0;
+        _threatsBlockedThisWeek = stats['threatsBlockedThisWeek'] ?? 0;
+        _highRiskCallsCount = stats['highRiskCallsCount'] ?? 0;
+        _totalCallsCount = stats['totalCallsCount'] ?? 0;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshStats() async {
+    if (!mounted) return;
+
+    final stats = await _methodChannel.getProtectionStatistics();
+
+    if (mounted) {
+      setState(() {
+        _threatsBlockedToday = stats['threatsBlockedToday'] ?? 0;
+        _threatsBlockedThisWeek = stats['threatsBlockedThisWeek'] ?? 0;
+        _highRiskCallsCount = stats['highRiskCallsCount'] ?? 0;
+        _totalCallsCount = stats['totalCallsCount'] ?? 0;
+      });
+
+      // Schedule next refresh
+      Future.delayed(const Duration(seconds: 30), _refreshStats);
+    }
   }
 
   @override
@@ -37,10 +72,10 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _isProtectionEnabled
-              ? [AppColors.success, AppColors.success.withOpacity(0.8)]
+              ? [AppColors.success, AppColors.success.withValues(alpha: 0.8)]
               : [
                   AppColors.textSecondaryLight,
-                  AppColors.textSecondaryLight.withOpacity(0.7),
+                  AppColors.textSecondaryLight.withValues(alpha: 0.7),
                 ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -52,7 +87,7 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
                 (_isProtectionEnabled
                         ? AppColors.success
                         : AppColors.textSecondaryLight)
-                    .withOpacity(0.3),
+                    .withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -72,7 +107,7 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -92,8 +127,8 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
               Switch(
                 value: _isProtectionEnabled,
                 onChanged: _toggleProtection,
-                activeColor: Colors.white,
-                activeTrackColor: Colors.white.withOpacity(0.3),
+                activeThumbColor: Colors.white,
+                activeTrackColor: Colors.white.withValues(alpha: 0.3),
               ),
             ],
           ),
@@ -101,32 +136,39 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
           const SizedBox(height: 24),
 
           // Statistics
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  icon: Icons.security,
-                  label: 'Active Calls',
-                  value: '$_activeCalls',
+          _isLoading
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: Icons.block,
+                        label: 'Blocked Today',
+                        value: '$_threatsBlockedToday',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: Icons.warning_amber,
+                        label: 'High Risk Calls',
+                        value: '$_highRiskCallsCount',
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  icon: Icons.block,
-                  label: 'Blocked Today',
-                  value: '$_threatsBlockedToday',
-                ),
-              ),
-            ],
-          ),
 
           if (!_isProtectionEnabled) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -158,7 +200,7 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -176,7 +218,7 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
           Text(
             label,
             style: AppTypography.labelSmall.copyWith(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -184,18 +226,27 @@ class _LiveProtectionWidgetState extends State<LiveProtectionWidget> {
     );
   }
 
-  void _toggleProtection(bool value) {
+  void _toggleProtection(bool value) async {
     setState(() {
       _isProtectionEnabled = value;
     });
 
-    // TODO: Update protection status via MethodChannel
+    if (value) {
+      await _methodChannel.startCallMonitoringService();
+    } else {
+      await _methodChannel.stopCallMonitoringService();
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(value ? 'Protection enabled' : 'Protection disabled'),
-        backgroundColor: value ? AppColors.success : AppColors.error,
-      ),
-    );
+    // Refresh stats after toggling
+    await _loadProtectionStatus();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value ? 'Protection enabled' : 'Protection disabled'),
+          backgroundColor: value ? AppColors.success : AppColors.error,
+        ),
+      );
+    }
   }
 }

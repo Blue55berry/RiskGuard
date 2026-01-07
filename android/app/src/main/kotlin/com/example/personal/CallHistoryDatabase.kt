@@ -240,6 +240,127 @@ class CallHistoryDatabase(context: Context) : SQLiteOpenHelper(context, DATABASE
             false
         }
     }
+    
+    /**
+     * Get number of threats blocked today
+     */
+    fun getThreatsBlockedToday(): Int {
+        val db = readableDatabase
+        val todayStart = getTodayStartTimestamp()
+        
+        val selection = "$COL_WAS_BLOCKED = 1 AND $COL_TIMESTAMP >= ?"
+        val selectionArgs = arrayOf(todayStart.toString())
+        
+        val cursor = db.query(
+            TABLE_HISTORY,
+            arrayOf("COUNT(*) as count"),
+            selection,
+            selectionArgs,
+            null,
+            null,
+            null
+        )
+        
+        return cursor.use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+    }
+    
+    /**
+     * Get number of threats blocked this week
+     */
+    fun getThreatsBlockedThisWeek(): Int {
+        val db = readableDatabase
+        val weekStart = getWeekStartTimestamp()
+        
+        val selection = "$COL_WAS_BLOCKED = 1 AND $COL_TIMESTAMP >= ?"
+        val selectionArgs = arrayOf(weekStart.toString())
+        
+        val cursor = db.query(
+            TABLE_HISTORY,
+            arrayOf("COUNT(*) as count"),
+            selection,
+            selectionArgs,
+            null,
+            null,
+            null
+        )
+        
+        return cursor.use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+    }
+    
+    /**
+     * Get count of high-risk calls (risk score >= 70)
+     */
+    fun getHighRiskCallsCount(): Int {
+        val db = readableDatabase
+        
+        val selection = "$COL_RISK_SCORE >= ?"
+        val selectionArgs = arrayOf("70")
+        
+        val cursor = db.query(
+            TABLE_HISTORY,
+            arrayOf("COUNT(*) as count"),
+            selection,
+            selectionArgs,
+            null,
+            null,
+            null
+        )
+        
+        return cursor.use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+    }
+    
+    /**
+     * Get total calls count
+     */
+    fun getTotalCallsCount(): Int {
+        val db = readableDatabase
+        
+        val cursor = db.query(
+            TABLE_HISTORY,
+            arrayOf("COUNT(*) as count"),
+            null,
+            null,
+            null,
+            null,
+            null
+        )
+        
+        return cursor.use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+    }
+    
+    /**
+     * Get timestamp for start of today (midnight)
+     */
+    private fun getTodayStartTimestamp(): Long {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
+    
+    /**
+     * Get timestamp for start of this week (Monday)
+     */
+    private fun getWeekStartTimestamp(): Long {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.firstDayOfWeek = java.util.Calendar.MONDAY
+        calendar.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.MONDAY)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
 }
 
 /**

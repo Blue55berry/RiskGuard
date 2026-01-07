@@ -8,6 +8,7 @@ import '../../call_detection/screens/call_history_screen.dart';
 import '../widgets/feature_card.dart';
 import '../widgets/protection_status_card.dart';
 import '../widgets/quick_action_button.dart';
+import '../../risk_scoring/widgets/analysis_dashboard_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -165,7 +166,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.15),
+            color: AppColors.primary.withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
           child: IconButton(
@@ -263,28 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAnalyzePage() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.analytics_outlined, size: 80, color: AppColors.primary),
-          const SizedBox(height: 16),
-          Text(
-            'Content Analysis',
-            style: AppTypography.headlineMedium.copyWith(
-              color: AppColors.textPrimaryDark,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Share content to analyze for risks',
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondaryDark,
-            ),
-          ),
-        ],
-      ),
-    );
+    return const AnalysisDashboardView();
   }
 
   Widget _buildSettingsPage() {
@@ -298,6 +278,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(height: 24),
+
+        // Contact Management Section
+        Text(
+          'Contacts & History',
+          style: AppTypography.titleMedium.copyWith(
+            color: AppColors.textPrimaryDark,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildSettingsTile(
+          icon: Icons.contacts,
+          title: 'Contacts Management',
+          subtitle: 'View and manage all saved contacts',
+          onTap: () => Navigator.pushNamed(context, '/contacts-management'),
+        ),
+        _buildSettingsTile(
+          icon: Icons.history,
+          title: 'Call History',
+          subtitle: 'View detailed call history and analytics',
+          onTap: () => Navigator.pushNamed(context, '/call-history'),
+        ),
+        _buildSettingsTile(
+          icon: Icons.verified_user,
+          title: 'Whitelist',
+          subtitle: 'Manage trusted contacts',
+          onTap: () => Navigator.pushNamed(context, '/whitelist'),
+        ),
+
+        const SizedBox(height: 24),
+        Text(
+          'App Settings',
+          style: AppTypography.titleMedium.copyWith(
+            color: AppColors.textPrimaryDark,
+          ),
+        ),
+        const SizedBox(height: 12),
         _buildSettingsTile(
           icon: Icons.shield_outlined,
           title: 'Protection Settings',
@@ -326,6 +342,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required IconData icon,
     required String title,
     required String subtitle,
+    VoidCallback? onTap,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -337,7 +354,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.15),
+            color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: AppColors.primary),
@@ -354,7 +371,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Icons.chevron_right,
           color: AppColors.textSecondaryDark,
         ),
-        onTap: () {},
+        onTap: onTap ?? () {},
       ),
     );
   }
@@ -365,7 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: AppColors.surfaceDark,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),

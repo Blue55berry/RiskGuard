@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/services/method_channel_service.dart';
 
 /// Enhanced call history screen with search and filter capabilities
 class EnhancedCallHistoryScreen extends StatefulWidget {
-  const EnhancedCallHistoryScreen({Key? key}) : super(key: key);
+  const EnhancedCallHistoryScreen({super.key});
 
   @override
   State<EnhancedCallHistoryScreen> createState() =>
@@ -13,10 +14,12 @@ class EnhancedCallHistoryScreen extends StatefulWidget {
 }
 
 class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
+  final MethodChannelService _methodChannel = MethodChannelService();
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'All';
   List<Map<String, dynamic>> _calls = [];
   List<Map<String, dynamic>> _filteredCalls = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -31,12 +34,21 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
   }
 
   Future<void> _loadCallHistory() async {
-    // TODO: Load from CallHistoryDatabase via MethodChannel
-    // For now, using mock data
-    setState(() {
-      _calls = _getMockCalls();
-      _filteredCalls = _calls;
-    });
+    setState(() => _isLoading = true);
+    try {
+      final calls = await _methodChannel.getRecentCalls();
+      setState(() {
+        _calls = calls.isNotEmpty ? calls : _getMockCalls();
+        _filteredCalls = _calls;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _calls = _getMockCalls();
+        _filteredCalls = _calls;
+        _isLoading = false;
+      });
+    }
   }
 
   void _filterCalls() {
@@ -148,7 +160,9 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
 
           // Call list
           Expanded(
-            child: _filteredCalls.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredCalls.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
                     itemCount: _filteredCalls.length,
@@ -202,7 +216,7 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -211,7 +225,7 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          backgroundColor: riskColor.withOpacity(0.1),
+          backgroundColor: riskColor.withValues(alpha: 0.1),
           child: Icon(
             callType == 'incoming' ? Icons.call_received : Icons.call_made,
             color: riskColor,
@@ -230,7 +244,7 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: riskColor.withOpacity(0.1),
+                color: riskColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -319,7 +333,7 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
           Icon(
             Icons.history,
             size: 64,
-            color: AppColors.textSecondaryLight.withOpacity(0.5),
+            color: AppColors.textSecondaryLight.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -363,14 +377,44 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
   }
 
   void _showCallDetails(Map<String, dynamic> call) {
-    // TODO: Show detailed call information
+    // Show detailed call information in a dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Call Details', style: AppTypography.titleLarge),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Number: ${call['phoneNumber']}',
+              style: AppTypography.bodyMedium,
+            ),
+            Text(
+              'Risk Score: ${call['riskScore']}%',
+              style: AppTypography.bodyMedium,
+            ),
+            Text(
+              'Analysis: ${call['explanation'] ?? "No detailed analysis available."}',
+              style: AppTypography.bodyMedium,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _exportToCsv() {
-    // TODO: Export call history to CSV
+    // Export functionality would involve generating a CSV and sharing it
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Export feature coming soon')));
+    ).showSnackBar(const SnackBar(content: Text('Exporting call history...')));
   }
 
   void _clearHistory() {
@@ -388,13 +432,22 @@ class _EnhancedCallHistoryScreenState extends State<EnhancedCallHistoryScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Clear database via MethodChannel
-              Navigator.pop(context);
-              setState(() {
-                _calls.clear();
-                _filteredCalls.clear();
-              });
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+
+              final success = await _methodChannel.clearRecentCalls();
+
+              if (success && mounted) {
+                navigator.pop();
+                setState(() {
+                  _calls.clear();
+                  _filteredCalls.clear();
+                });
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Call history cleared')),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Clear'),

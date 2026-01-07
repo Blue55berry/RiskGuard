@@ -1,9 +1,11 @@
+/// Provider for overall analysis state management
+library;
+
 import 'package:flutter/foundation.dart';
 import '../services/overall_analysis_service.dart';
 import '../../call_detection/services/call_risk_service.dart';
 import '../../message_analysis/services/message_analyzer_service.dart';
 
-/// Provider for overall analysis state management
 class OverallAnalysisProvider extends ChangeNotifier {
   final OverallAnalysisService _service = OverallAnalysisService();
 

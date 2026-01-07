@@ -1,5 +1,8 @@
 /// Message Analyzer Service - NLP-based phishing and scam detection
+library;
+
 import 'package:dio/dio.dart';
+import 'dart:developer' as developer;
 import '../../../core/constants/app_constants.dart';
 
 /// Types of message threats
@@ -181,14 +184,14 @@ class MessageAnalyzerService {
         try {
           return await _cloudAnalysis(message);
         } catch (e) {
-          print('Cloud analysis failed, using local: $e');
+          developer.log('Cloud analysis failed, using local: $e');
         }
       }
 
       // Local analysis
       return _localAnalysis(message);
     } catch (e) {
-      print('Message analysis error: $e');
+      developer.log('Message analysis error: $e');
       return MessageAnalysisResult.safe();
     }
   }

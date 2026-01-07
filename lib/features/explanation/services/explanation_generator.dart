@@ -1,4 +1,6 @@
 /// Explanation Generator - Converts technical analysis to user-friendly text
+library;
+
 import '../../../core/constants/risk_levels.dart';
 import '../../risk_scoring/services/risk_scoring_engine.dart';
 

@@ -1,7 +1,10 @@
-/// Voice Analyzer Service - Analyzes audio for AI-generated voice detection
+/// Voice Analyzer Service - Detects synthetic and manipulated voices
+library;
+
 import 'dart:io';
 import 'dart:math';
 import 'package:dio/dio.dart';
+import 'dart:developer' as developer;
 import '../../../core/constants/app_constants.dart';
 
 /// Voice classification types
@@ -61,6 +64,17 @@ class VoiceAnalysisResult {
     );
   }
 
+  factory VoiceAnalysisResult.safe() {
+    return VoiceAnalysisResult(
+      syntheticProbability: 0.0,
+      confidence: 0.0,
+      detectedPatterns: [],
+      explanation: 'Unable to analyze. Please try again.',
+      isLikelyAI: false,
+      classification: VoiceClassification.uncertain,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'syntheticProbability': syntheticProbability,
     'confidence': confidence,
@@ -92,22 +106,22 @@ class VoiceAnalyzerService {
   );
 
   /// Analyze an audio file for synthetic voice characteristics
-  Future<VoiceAnalysisResult> analyzeAudio(String filePath) async {
+  Future<VoiceAnalysisResult> analyzeAudio(String audioPath) async {
     try {
       // First try cloud analysis
       if (AppConstants.enableCloudAnalysis) {
         try {
-          return await _cloudAnalysis(filePath);
+          return await _cloudAnalysis(audioPath);
         } catch (e) {
-          print('Cloud analysis failed, falling back to local: $e');
+          developer.log('Cloud analysis failed, using local: $e');
         }
       }
 
       // Fallback to local analysis
-      return await _localAnalysis(filePath);
+      return await _localAnalysis(audioPath);
     } catch (e) {
-      print('Voice analysis error: $e');
-      return _getDefaultResult();
+      developer.log('Voice analysis error: $e');
+      return VoiceAnalysisResult.safe();
     }
   }
 
@@ -194,17 +208,6 @@ class VoiceAnalyzerService {
       explanation: explanation,
       isLikelyAI: isLikelyAI,
       classification: classification,
-    );
-  }
-
-  VoiceAnalysisResult _getDefaultResult() {
-    return VoiceAnalysisResult(
-      syntheticProbability: 0.0,
-      confidence: 0.0,
-      detectedPatterns: [],
-      explanation: 'Unable to analyze. Please try again.',
-      isLikelyAI: false,
-      classification: VoiceClassification.uncertain,
     );
   }
 }

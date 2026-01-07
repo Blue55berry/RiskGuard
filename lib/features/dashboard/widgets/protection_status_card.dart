@@ -1,4 +1,6 @@
 /// Protection Status Card widget
+library;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -16,11 +18,26 @@ class ProtectionStatusCard extends StatefulWidget {
 class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
   final _methodChannelService = MethodChannelService();
   bool _isBatteryOptimized = false;
+  int _threatsBlocked = 0;
+  int _highRiskCalls = 0;
+  int _totalCalls = 0;
 
   @override
   void initState() {
     super.initState();
     _checkBatteryOptimization();
+    _loadStatistics();
+  }
+
+  Future<void> _loadStatistics() async {
+    final stats = await _methodChannelService.getProtectionStatistics();
+    if (mounted) {
+      setState(() {
+        _threatsBlocked = stats['threatsBlockedToday'] ?? 0;
+        _highRiskCalls = stats['highRiskCallsCount'] ?? 0;
+        _totalCalls = stats['totalCallsCount'] ?? 0;
+      });
+    }
   }
 
   Future<void> _checkBatteryOptimization() async {
@@ -60,7 +77,7 @@ class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -75,7 +92,9 @@ class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(isActive ? 0.2 : 0.1),
+                      color: Colors.white.withValues(
+                        alpha: isActive ? 0.2 : 0.1,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -107,7 +126,7 @@ class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
                               : 'Enable protection to stay safe',
                           style: AppTypography.bodyMedium.copyWith(
                             color: isActive
-                                ? Colors.white.withOpacity(0.8)
+                                ? Colors.white.withValues(alpha: 0.8)
                                 : AppColors.textSecondaryDark,
                           ),
                         ),
@@ -120,12 +139,14 @@ class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (isActive) {
                       provider.stopMonitoring();
                     } else {
                       provider.startMonitoring();
                     }
+                    // Refresh statistics after toggling
+                    await _loadStatistics();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isActive
@@ -152,12 +173,9 @@ class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStat(
-                      'Calls Analyzed',
-                      '${provider.callHistory.length}',
-                    ),
-                    _buildStat('Threats Blocked', '0'),
-                    _buildStat('Risk Score', 'Low'),
+                    _buildStat('Total Calls', '$_totalCalls'),
+                    _buildStat('Threats Blocked', '$_threatsBlocked'),
+                    _buildStat('High Risk', '$_highRiskCalls'),
                   ],
                 ),
               ],
@@ -175,9 +193,12 @@ class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.2),
+        color: Colors.orange.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange.withOpacity(0.5), width: 1),
+        border: Border.all(
+          color: Colors.orange.withValues(alpha: 0.5),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
@@ -232,7 +253,7 @@ class _ProtectionStatusCardState extends State<ProtectionStatusCard> {
         Text(
           label,
           style: AppTypography.labelSmall.copyWith(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
           ),
         ),
       ],

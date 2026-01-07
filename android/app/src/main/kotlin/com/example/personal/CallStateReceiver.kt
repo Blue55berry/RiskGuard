@@ -59,6 +59,8 @@ class CallStateReceiver : BroadcastReceiver() {
                 lastPhoneNumber?.let { number ->
                     if (number.isNotEmpty()) {
                         updateOverlayService(context, number, isIncoming)
+                        // Ensure overlay is shown if it wasn't already (e.g. outgoing transition)
+                        startOverlayService(context, number, isIncoming)
                     }
                 }
             }
@@ -82,10 +84,10 @@ class CallStateReceiver : BroadcastReceiver() {
                     }, 1000)
                 }
                 
-                // Stop overlay after post-call details are shown or timeout
+                // Stop overlay immediately after call ends
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     stopOverlayService(context)
-                }, 6000) // 6 seconds total (1 second delay + 5 seconds display)
+                }, 1000) // 1 second delay to allow for any final updates
                 
                 lastPhoneNumber = null
                 isIncoming = false

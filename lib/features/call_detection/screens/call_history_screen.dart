@@ -1,4 +1,6 @@
 /// Call History Screen - Displays past call risk analyses
+library;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -63,7 +65,7 @@ class CallHistoryScreen extends StatelessWidget {
           Icon(
             Icons.phone_missed,
             size: 80,
-            color: AppColors.textSecondaryDark.withOpacity(0.5),
+            color: AppColors.textSecondaryDark.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -75,7 +77,7 @@ class CallHistoryScreen extends StatelessWidget {
             'Analyzed calls will appear here',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondaryDark.withOpacity(0.7),
+              color: AppColors.textSecondaryDark.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -109,7 +111,7 @@ class _CallHistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardDark,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: riskColor.withOpacity(0.3), width: 1),
+        border: Border.all(color: riskColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),

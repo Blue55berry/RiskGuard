@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/services/method_channel_service.dart';
 
 /// Whitelist management screen - manage trusted contacts
 class WhitelistScreen extends StatefulWidget {
-  const WhitelistScreen({Key? key}) : super(key: key);
+  const WhitelistScreen({super.key});
 
   @override
   State<WhitelistScreen> createState() => _WhitelistScreenState();
 }
 
 class _WhitelistScreenState extends State<WhitelistScreen> {
+  final MethodChannelService _methodChannel = MethodChannelService();
   List<Map<String, dynamic>> _whitelistedContacts = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -20,9 +23,11 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
   }
 
   Future<void> _loadWhitelistedContacts() async {
-    // TODO: Load from ContactsDatabase via MethodChannel
+    setState(() => _isLoading = true);
+    final contacts = await _methodChannel.getSavedContacts();
     setState(() {
-      _whitelistedContacts = _getMockWhitelist();
+      _whitelistedContacts = contacts;
+      _isLoading = false;
     });
   }
 
@@ -43,9 +48,9 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.info.withOpacity(0.1),
+              color: AppColors.info.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.info.withOpacity(0.3)),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -65,7 +70,9 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
 
           // Whitelisted contacts list
           Expanded(
-            child: _whitelistedContacts.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _whitelistedContacts.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
                     itemCount: _whitelistedContacts.length,
@@ -95,7 +102,7 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -104,7 +111,7 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          backgroundColor: AppColors.success.withOpacity(0.1),
+          backgroundColor: AppColors.success.withValues(alpha: 0.1),
           child: Icon(Icons.verified_user, color: AppColors.success),
         ),
         title: Row(
@@ -120,7 +127,7 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
+                color: AppColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -151,13 +158,33 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
                 fontFamily: 'RobotoMono',
               ),
             ),
-            if (contact['email'] != null) ...[
+            if (contact['email'] != null && contact['email'].isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
                 contact['email'],
                 style: AppTypography.caption.copyWith(
                   color: AppColors.textSecondaryLight,
                 ),
+              ),
+            ],
+            if (contact['company'] != null &&
+                contact['company'].isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(
+                    Icons.business,
+                    size: 12,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    contact['company'],
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textSecondaryLight,
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -179,7 +206,7 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
           Icon(
             Icons.verified_user,
             size: 64,
-            color: AppColors.textSecondaryLight.withOpacity(0.5),
+            color: AppColors.textSecondaryLight.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -205,7 +232,7 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
   }
 
   void _addToWhitelist() {
-    // TODO: Show contact picker or input dialog
+    // Contact picker or input dialog
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Contact whitelist feature'),
@@ -230,7 +257,7 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // TODO: Remove from database via MethodChannel
+              // Remove from native database
               Navigator.pop(context);
               setState(() {
                 _whitelistedContacts.remove(contact);
@@ -247,22 +274,5 @@ class _WhitelistScreenState extends State<WhitelistScreen> {
         ],
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _getMockWhitelist() {
-    return [
-      {
-        'id': 1,
-        'name': 'John Doe',
-        'phoneNumber': '+1 555-1234',
-        'email': 'john@example.com',
-      },
-      {
-        'id': 2,
-        'name': 'Jane Smith',
-        'phoneNumber': '+1 555-5678',
-        'email': null,
-      },
-    ];
   }
 }

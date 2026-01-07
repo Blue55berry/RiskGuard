@@ -9,9 +9,13 @@ import android.graphics.drawable.GradientDrawable
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
 import android.util.Log
 import android.view.*
 import android.widget.*
@@ -51,11 +55,14 @@ class CallOverlayService : Service() {
         
         var currentRecordingPath: String? = null
             private set
+            
+        private var isManualRecording = false
     }
     
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var floatingIconView: View? = null
+    private var hubDialog: AlertDialog? = null
     private var isOverlayVisible = false
     private var currentPhoneNumber: String = ""
     private var isIncomingCall = true
@@ -142,8 +149,12 @@ class CallOverlayService : Service() {
         
         try {
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "call_recording_$timestamp.m4a"
-            val recordingsDir = File(getExternalFilesDir(Environment.DIRECTORY_MUSIC), "recordings")
+            val fileName = "RiskGuard_Call_$timestamp.m4a"
+            
+            // Save to a more accessible public folder in Music
+            val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+            val recordingsDir = File(musicDir, "RiskGuard_Recordings")
+            
             if (!recordingsDir.exists()) {
                 recordingsDir.mkdirs()
             }
@@ -239,6 +250,12 @@ class CallOverlayService : Service() {
                 visibility = View.VISIBLE
                 setBackgroundColor(if (isSynthetic) Color.parseColor("#1AEF4444") else Color.parseColor("#1A10B981"))
             }
+        }
+        
+        // Update Hub if open
+        hubDialog?.window?.decorView?.findViewWithTag<TextView>("hub_ai_status")?.apply {
+            text = statusText
+            setTextColor(color)
         }
     }
     
@@ -339,13 +356,12 @@ class CallOverlayService : Service() {
             background = gradientDrawable
             elevation = 8f
             
-            // Add shield icon
+            // Add App Icon
             addView(ImageView(context).apply {
-                setImageResource(android.R.drawable.ic_menu_info_details)
-                setColorFilter(Color.WHITE)
+                setImageResource(R.mipmap.ic_launcher)
                 layoutParams = FrameLayout.LayoutParams(
-                    (32 * resources.displayMetrics.density).toInt(),
-                    (32 * resources.displayMetrics.density).toInt(),
+                    (40 * resources.displayMetrics.density).toInt(),
+                    (40 * resources.displayMetrics.density).toInt(),
                     Gravity.CENTER
                 )
             })
@@ -353,15 +369,16 @@ class CallOverlayService : Service() {
             // Add saved indicator badge if contact is known
             if (isKnownNumber) {
                 addView(View(context).apply {
-                    val badgeSize = (12 * resources.displayMetrics.density).toInt()
+                    val badgeSize = (14 * resources.displayMetrics.density).toInt()
                     layoutParams = FrameLayout.LayoutParams(badgeSize, badgeSize).apply {
-                        gravity = Gravity.TOP or Gravity.END
-                        topMargin = (4 * resources.displayMetrics.density).toInt()
+                        gravity = Gravity.BOTTOM or Gravity.END
+                        bottomMargin = (4 * resources.displayMetrics.density).toInt()
                         marginEnd = (4 * resources.displayMetrics.density).toInt()
                     }
                     val badgeDrawable = GradientDrawable().apply {
                         shape = GradientDrawable.OVAL
                         setColor(Color.parseColor("#10B981")) // Green
+                        setStroke(4, Color.WHITE)
                     }
                     background = badgeDrawable
                 })
@@ -380,7 +397,7 @@ class CallOverlayService : Service() {
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
             format = PixelFormat.TRANSLUCENT
-            gravity = Gravity.TOP or Gravity.END
+            gravity = Gravity.TOP or Gravity.START // Changed to start for better visibility
             x = (16 * resources.displayMetrics.density).toInt()
             y = (200 * resources.displayMetrics.density).toInt()
         }
@@ -401,7 +418,7 @@ class CallOverlayService : Service() {
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (initialTouchX - event.rawX).toInt()
+                    params.x = initialX + (event.rawX - initialTouchX).toInt()
                     params.y = initialY + (event.rawY - initialTouchY).toInt()
                     windowManager?.updateViewLayout(floatingIconView, params)
                     true
@@ -411,7 +428,7 @@ class CallOverlayService : Service() {
                     val deltaX = Math.abs(initialTouchX - event.rawX)
                     val deltaY = Math.abs(initialTouchY - event.rawY)
                     if (deltaX < 10 && deltaY < 10) {
-                        showContactFormPopup()
+                        showFeatureHub()
                     }
                     true
                 }
@@ -682,6 +699,12 @@ class CallOverlayService : Service() {
             }
             view.findViewWithTag<TextView>("explanation")?.text = explanation
         }
+        
+        // Update Hub if open
+        hubDialog?.window?.decorView?.findViewWithTag<TextView>("hub_risk_score")?.apply {
+            text = score.toString()
+            setTextColor(color)
+        }
     }
     
     private fun hideOverlay() {
@@ -722,502 +745,472 @@ class CallOverlayService : Service() {
     }
     
     /**
-     * Show contact form popup when floating icon is clicked
+     * Show unified Feature Hub when floating icon is clicked
      */
-    private fun showContactFormPopup() {
-        // Check if contact already exists
-        val existingContact = contactsDb.getContactByPhone(currentPhoneNumber)
+    private fun showFeatureHub() {
+        val contact = contactsDb.getContactByPhone(currentPhoneNumber)
         
-        if (existingContact != null) {
-            // Show existing contact details with edit option
-            showSavedContactDetails(existingContact)
-            return
-        }
-        
-        // Create dialog layout
-        val dialogView = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(60, 40, 60, 40)
-            setBackgroundColor(Color.WHITE)
-            
-            // Title
-            addView(TextView(context).apply {
-                text = "Save Caller Information"
-                textSize = 20f
-                setTextColor(Color.parseColor("#2D2A3E"))
-                setPadding(0, 0, 0, 32)
-            })
-            
-            // Name field
-            addView(TextView(context).apply {
-                text = "Name"
-                textSize = 14f
-                setTextColor(Color.parseColor("#6B7280"))
-                setPadding(0, 16, 0, 8)
-            })
-            val nameInput = EditText(context).apply {
-                hint = "Enter name"
-                tag = "name_input"
-                setBackgroundResource(android.R.drawable.edit_text)
-                setPadding(24, 24, 24, 24)
-            }
-            addView(nameInput)
-            
-            // Email field
-            addView(TextView(context).apply {
-                text = "Email"
-                textSize = 14f
-                setTextColor(Color.parseColor("#6B7280"))
-                setPadding(0, 16, 0, 8)
-            })
-            val emailInput = EditText(context).apply {
-                hint = "Enter email"
-                tag = "email_input"
-                inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-                setBackgroundResource(android.R.drawable.edit_text)
-                setPadding(24, 24, 24, 24)
-            }
-            addView(emailInput)
-            
-            // Category field
-            addView(TextView(context).apply {
-                text = "Category"
-                textSize = 14f
-                setTextColor(Color.parseColor("#6B7280"))
-                setPadding(0, 16, 0, 8)
-            })
-            val categories = arrayOf(
-                "Unknown Caller",
-                "Business Contact",
-                "Personal Contact",
-                "Potential Spam",
-                "Verified Safe"
+        // Create a scrollable container for the hub
+        val scrollView = ScrollView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
             )
-            val categorySpinner = Spinner(context).apply {
-                tag = "category_spinner"
-                adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, categories).apply {
-                    setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                }
-                setBackgroundResource(android.R.drawable.edit_text)
-                setPadding(16, 16, 16, 16)
-            }
-            addView(categorySpinner)
+        }
+        
+        val hubLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(40, 40, 40, 40)
+            setBackgroundColor(Color.parseColor("#1A1B2E")) // Deep dark background
             
-            // Buttons
+            // --- HEADER ---
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.END
-                setPadding(0, 32, 0, 0)
-                
-                // Cancel button
-                addView(Button(context).apply {
-                    text = "Cancel"
-                    setTextColor(Color.parseColor("#6B7280"))
-                    setBackgroundColor(Color.TRANSPARENT)
-                    setOnClickListener {
-                        // Dialog will be dismissed
-                    }
-                })
-                
-                // Save button
-                addView(Button(context).apply {
-                    text = "Save"
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#8B5CF6"))
-                    setPadding(48, 24, 48, 24)
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        marginStart = 16
-                    }
-                    setOnClickListener {
-                        val name = nameInput.text.toString().trim()
-                        val email = emailInput.text.toString().trim()
-                        val category = categorySpinner.selectedItem.toString()
-                        
-                        if (name.isNotEmpty()) {
-                            // Save to database
-                            val saved = contactsDb.saveContact(
-                                phoneNumber = currentPhoneNumber,
-                                name = name,
-                                email = if (email.isNotEmpty()) email else null,
-                                category = category,
-                                company = null,
-                                notes = null,
-                                tags = null
-                            )
-                            
-                            if (saved) {
-                                isKnownNumber = true
-                                Log.d(TAG, "Contact saved successfully")
-                                
-                                // Notify Flutter about the saved contact
-                                MethodChannelHandler.sendContactSaved(currentPhoneNumber, name, email, category)
-                                
-                                // Show toast
-                                Toast.makeText(
-                                    this@CallOverlayService,
-                                    "Contact saved: $name",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                
-                                // Update floating icon to show saved badge
-                                recreateFloatingIcon()
-                            }
-                        } else {
-                            Toast.makeText(
-                                this@CallOverlayService,
-                                "Please enter a name",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                })
-            })
-        }
-        
-        // Create dialog
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
-            .setView(dialogView)
-            .create()
-        
-        // Make it system overlay
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-        } else {
-            @Suppress("DEPRECATION")
-            dialog.window?.setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT)
-        }
-        
-        dialog.show()
-    }
-    
-    /**
-     * Show saved contact details with edit option
-     */
-    private fun showSavedContactDetails(contact: SavedContact) {
-        val dialogView = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(60, 40, 60, 40)
-            setBackgroundColor(Color.WHITE)
-            
-            // Title
-            addView(TextView(context).apply {
-                text = contact.name ?: "Unknown"
-                textSize = 24f
-                setTextColor(Color.parseColor("#2D2A3E"))
-                setPadding(0, 0, 0, 16)
-            })
-            
-            // Phone number
-            addView(TextView(context).apply {
-                text = formatPhoneNumber(contact.phoneNumber)
-                textSize = 16f
-                setTextColor(Color.parseColor("#6B7280"))
-                setPadding(0, 0, 0, 8)
-            })
-            
-            // Email
-            contact.email?.let { email ->
-                addView(TextView(context).apply {
-                    text = "📧 $email"
-                    textSize = 14f
-                    setTextColor(Color.parseColor("#6B7280"))
-                    setPadding(0, 8, 0, 8)
-                })
-            }
-            
-            // Category badge
-            contact.category?.let { category ->
-                addView(TextView(context).apply {
-                    text = category
-                    textSize = 12f
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#8B5CF6"))
-                    setPadding(20, 8, 20, 8)
-                    gravity = Gravity.CENTER
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        topMargin = 16
-                    }
-                })
-            }
-            
-            // Buttons row
-            addView(LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.END
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    topMargin = 24
-                }
-                
-                // Edit button
-                addView(Button(context).apply {
-                    text = "Edit"
-                    setTextColor(Color.parseColor("#8B5CF6"))
-                    setBackgroundColor(Color.TRANSPARENT)
-                    setOnClickListener { view ->
-                        // Find and dismiss the dialog
-                        var parent = view.parent
-                        while (parent != null) {
-                            if (parent is android.app.Dialog) {
-                                parent.dismiss()
-                                break
-                            }
-                            parent = (parent as? android.view.View)?.parent
-                        }
-                        showEditContactDialog(contact)
-                    }
-                })
-                
-                // Close button
-                addView(Button(context).apply {
-                    text = "Close"
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#8B5CF6"))
-                    setPadding(48, 24, 48, 24)
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        marginStart = 16
-                    }
-                    setOnClickListener { view ->
-                        var parent = view.parent
-                        while (parent != null) {
-                            if (parent is android.app.Dialog) {
-                                parent.dismiss()
-                                break
-                            }
-                            parent = (parent as? android.view.View)?.parent
-                        }
-                    }
-                })
-            })
-        }
-        
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
-            .setView(dialogView)
-            .create()
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-        } else {
-            @Suppress("DEPRECATION")
-            dialog.window?.setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT)
-        }
-        
-        dialog.show()
-    }
-    
-    /**
-     * Show edit contact dialog with pre-filled data
-     */
-    private fun showEditContactDialog(contact: SavedContact) {
-        // Create dialog layout
-        val dialogView = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(60, 40, 60, 40)
-            setBackgroundColor(Color.WHITE)
-            
-            // Title
-            addView(TextView(context).apply {
-                text = "Edit Contact Information"
-                textSize = 20f
-                setTextColor(Color.parseColor("#2D2A3E"))
+                gravity = Gravity.CENTER_VERTICAL
                 setPadding(0, 0, 0, 32)
-            })
-            
-            // Name field
-            addView(TextView(context).apply {
-                text = "Name"
-                textSize = 14f
-                setTextColor(Color.parseColor("#6B7280"))
-                setPadding(0, 16, 0, 8)
-            })
-            val nameInput = EditText(context).apply {
-                hint = "Enter name"
-                setText(contact.name ?: "")
-                tag = "name_input"
-                setBackgroundResource(android.R.drawable.edit_text)
-                setPadding(24, 24, 24, 24)
-            }
-            addView(nameInput)
-            
-            // Email field
-            addView(TextView(context).apply {
-                text = "Email"
-                textSize = 14f
-                setTextColor(Color.parseColor("#6B7280"))
-                setPadding(0, 16, 0, 8)
-            })
-            val emailInput = EditText(context).apply {
-                hint = "Enter email"
-                setText(contact.email ?: "")
-                tag = "email_input"
-                inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-                setBackgroundResource(android.R.drawable.edit_text)
-                setPadding(24, 24, 24, 24)
-            }
-            addView(emailInput)
-            
-            // Category field
-            addView(TextView(context).apply {
-                text = "Category"
-                textSize = 14f
-                setTextColor(Color.parseColor("#6B7280"))
-                setPadding(0, 16, 0, 8)
-            })
-            val categories = arrayOf(
-                "Unknown Caller",
-                "Business Contact",
-                "Personal Contact",
-                "Potential Spam",
-                "Verified Safe"
-            )
-            val categorySpinner = Spinner(context).apply {
-                tag = "category_spinner"
-                adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, categories).apply {
-                    setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                }
-                // Set current selection
-                val currentCategory = contact.category ?: "Unknown Caller"
-                val position = categories.indexOf(currentCategory)
-                if (position >= 0) {
-                    setSelection(position)
-                }
-                setBackgroundResource(android.R.drawable.edit_text)
-                setPadding(16, 16, 16, 16)
-            }
-            addView(categorySpinner)
-            
-            // Buttons
-            addView(LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.END
-                setPadding(0, 32, 0, 0)
                 
-                // Cancel button
-                addView(Button(context).apply {
-                    text = "Cancel"
-                    setTextColor(Color.parseColor("#6B7280"))
-                    setBackgroundColor(Color.TRANSPARENT)
-                    setOnClickListener { view ->
-                        var parent = view.parent
-                        while (parent != null) {
-                            if (parent is android.app.Dialog) {
-                                parent.dismiss()
-                                break
-                            }
-                            parent = (parent as? android.view.View)?.parent
-                        }
-                    }
+                addView(ImageView(context).apply {
+                    setImageResource(R.mipmap.ic_launcher)
+                    layoutParams = LinearLayout.LayoutParams(80, 80)
                 })
                 
-                // Save button
-                addView(Button(context).apply {
-                    text = "Save Changes"
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.parseColor("#8B5CF6"))
-                    setPadding(48, 24, 48, 24)
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        marginStart = 16
-                    }
-                    setOnClickListener { view ->
-                        val name = nameInput.text.toString().trim()
-                        val email = emailInput.text.toString().trim()
-                        val category = categorySpinner.selectedItem.toString()
+                addView(LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(24, 0, 0, 0)
+                    
+                    addView(TextView(context).apply {
+                        text = "RiskGuard Feature Hub"
+                        textSize = 22f
+                        setTextColor(Color.parseColor("#F9FAFB"))
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                    })
+                    
+                    addView(TextView(context).apply {
+                        text = formatPhoneNumber(currentPhoneNumber)
+                        textSize = 14f
+                        setTextColor(Color.parseColor("#9CA3AF"))
+                        setPadding(0, 4, 0, 0)
+                    })
+                })
+            })
+
+            // --- RISK & AI STATUS (Consolidated) ---
+            addView(createHubSection(context, "🛡️ Live Protection", Color.parseColor("#8B5CF6")).apply {
+                val statusLayout = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(24, 16, 24, 16)
+                    
+                    // Risk Score
+                    addView(LinearLayout(context).apply {
+                        orientation = LinearLayout.VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                        gravity = Gravity.CENTER
                         
-                        if (name.isNotEmpty()) {
-                            // Update in database
-                            val updated = contactsDb.updateContact(
-                                phoneNumber = contact.phoneNumber,
-                                name = name,
-                                email = if (email.isNotEmpty()) email else null,
-                                category = category,
-                                company = contact.company,
-                                notes = contact.notes,
-                                tags = contact.tags
-                            )
-                            
-                            if (updated) {
-                                Log.d(TAG, "Contact updated successfully")
-                                
-                                // Notify Flutter about the update
-                                MethodChannelHandler.sendContactUpdated(
-                                    contact.phoneNumber,
-                                    name,
-                                    if (email.isNotEmpty()) email else null,
-                                    category
-                                )
-                                
-                                // Show toast
-                                Toast.makeText(
-                                    this@CallOverlayService,
-                                    "Contact updated successfully",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                
-                                // Update floating icon if needed
-                                recreateFloatingIcon()
-                                
-                                // Dismiss dialog
-                                var parent = view.parent
-                                while (parent != null) {
-                                    if (parent is android.app.Dialog) {
-                                        parent.dismiss()
-                                        break
-                                    }
-                                    parent = (parent as? android.view.View)?.parent
+                        addView(TextView(context).apply {
+                            tag = "hub_risk_score"
+                            text = overlayView?.findViewWithTag<TextView>("risk_score")?.text ?: "..."
+                            textSize = 40f
+                            setTextColor(overlayView?.findViewWithTag<TextView>("risk_score")?.currentTextColor ?: Color.parseColor("#10B981"))
+                            setTypeface(null, android.graphics.Typeface.BOLD)
+                        })
+                        addView(TextView(context).apply {
+                            text = "RISK SCORE"
+                            textSize = 11f
+                            setTextColor(Color.parseColor("#9CA3AF"))
+                            setTypeface(null, android.graphics.Typeface.BOLD)
+                        })
+                    })
+                    
+                    // AI Status
+                    addView(LinearLayout(context).apply {
+                        orientation = LinearLayout.VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.5f)
+                        gravity = Gravity.CENTER
+                        
+                        addView(TextView(context).apply {
+                            tag = "hub_ai_status"
+                            text = overlayView?.findViewWithTag<TextView>("ai_status")?.text ?: "Analyzing..."
+                            textSize = 18f
+                            setTextColor(overlayView?.findViewWithTag<TextView>("ai_status")?.currentTextColor ?: Color.parseColor("#8B5CF6"))
+                            setTypeface(null, android.graphics.Typeface.BOLD)
+                        })
+                        addView(TextView(context).apply {
+                            text = "VOICE ANALYSIS"
+                            textSize = 11f
+                            setTextColor(Color.parseColor("#9CA3AF"))
+                            setTypeface(null, android.graphics.Typeface.BOLD)
+                        })
+                    })
+                }
+                addView(statusLayout)
+            })
+
+            // --- CONTACT INFORMATION (Editable with Instant Save) ---
+            addView(createHubSection(context, "👤 Contact Info", Color.parseColor("#3B82F6")).apply {
+                val formLayout = LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(32, 16, 32, 32)
+                    
+                    // Name Field
+                    addView(createHubLabel(context, "Name"))
+                    val nameInput = createHubEditText(context, "Caller Name", contact?.name ?: "").apply {
+                        addTextChangedListener(object : TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                            override fun afterTextChanged(s: Editable?) {
+                                saveFieldInstantly("name", s.toString())
+                            }
+                        })
+                    }
+                    addView(nameInput)
+                    
+                    // Email Field
+                    addView(createHubLabel(context, "Email"))
+                    val emailInput = createHubEditText(context, "Email Address", contact?.email ?: "").apply {
+                        inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                        addTextChangedListener(object : TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                            override fun afterTextChanged(s: Editable?) {
+                                saveFieldInstantly("email", s.toString())
+                            }
+                        })
+                    }
+                    addView(emailInput)
+                    
+                    // Category Spinner
+                    addView(createHubLabel(context, "Category"))
+                    val categories = arrayOf("Unknown Caller", "Business", "Personal", "Spam", "Verified")
+                    val categorySpinner = Spinner(context).apply {
+                        adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, categories).apply {
+                            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                        }
+                        // Spinner styling in code is limited, but we can set a background
+                        val spinnerBg = GradientDrawable().apply {
+                            setColor(Color.parseColor("#3F4050"))
+                            cornerRadius = 12f
+                        }
+                        background = spinnerBg
+                        setPadding(24, 16, 24, 16)
+                        
+                        val currentCat = contact?.category ?: "Unknown Caller"
+                        val pos = categories.indexOf(currentCat).let { if (it >= 0) it else 0 }
+                        setSelection(pos)
+                        
+                        onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
+                                saveFieldInstantly("category", categories[p2])
+                            }
+                            override fun onNothingSelected(p0: AdapterView<*>?) {}
+                        }
+                    }
+                    addView(categorySpinner)
+
+                    // Company Field
+                    addView(createHubLabel(context, "Company"))
+                    val companyInput = createHubEditText(context, "Company name", contact?.company ?: "").apply {
+                        addTextChangedListener(object : TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                            override fun afterTextChanged(s: Editable?) {
+                                saveFieldInstantly("company", s.toString())
+                            }
+                        })
+                    }
+                    addView(companyInput)
+
+                    // Notes Field
+                    addView(createHubLabel(context, "Notes"))
+                    val notesInput = createHubEditText(context, "Call notes...", contact?.notes ?: "").apply {
+                        addTextChangedListener(object : TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                            override fun afterTextChanged(s: Editable?) {
+                                saveFieldInstantly("notes", s.toString())
+                            }
+                        })
+                    }
+                    addView(notesInput)
+                }
+                addView(formLayout)
+            })
+
+            // --- RECORDING OPTIONS ---
+            addView(createHubSection(context, "🎙️ Recording Options", Color.parseColor("#EF4444")).apply {
+                val recLayout = LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(24, 16, 24, 16)
+                    
+                    addView(TextView(context).apply {
+                        text = "Current Status: ${if (isRecording) "Recording..." else "Stopped"}"
+                        tag = "hub_rec_status"
+                        textSize = 14f
+                        setTextColor(if (isRecording) Color.parseColor("#EF4444") else Color.parseColor("#6B7280"))
+                    })
+                    
+                    addView(Button(context).apply {
+                        text = (if (isRecording) "Stop Recording" else "Start Recording").uppercase()
+                        tag = "hub_rec_button"
+                        setTextColor(Color.WHITE)
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        val btnBg = GradientDrawable().apply {
+                            setColor(if (isRecording) Color.parseColor("#EF4444") else Color.parseColor("#8B5CF6"))
+                            cornerRadius = 12f
+                        }
+                        background = btnBg
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            topMargin = 16
+                        }
+                        setOnClickListener {
+                            if (isRecording) {
+                                stopRecording()
+                                text = "START RECORDING"
+                                (background as GradientDrawable).setColor(Color.parseColor("#8B5CF6"))
+                                findViewWithTag<TextView>("hub_rec_status")?.apply {
+                                    text = "Current Status: Stopped"
+                                    setTextColor(Color.parseColor("#9CA3AF"))
+                                }
+                            } else {
+                                startRecording()
+                                text = "STOP RECORDING"
+                                (background as GradientDrawable).setColor(Color.parseColor("#EF4444"))
+                                findViewWithTag<TextView>("hub_rec_status")?.apply {
+                                    text = "Current Status: Recording..."
+                                    setTextColor(Color.parseColor("#EF4444"))
                                 }
                             }
-                        } else {
-                            Toast.makeText(
-                                this@CallOverlayService,
-                                "Please enter a name",
-                                Toast.LENGTH_SHORT
-                            ).show()
                         }
+                    })
+                    
+                    addView(Button(context).apply {
+                        text = "📁 OPEN RECORDINGS"
+                        setTextColor(Color.WHITE)
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        val btnBg = GradientDrawable().apply {
+                            setColor(Color.parseColor("#3F4050"))
+                            cornerRadius = 12f
+                        }
+                        background = btnBg
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            topMargin = 12
+                        }
+                        setOnClickListener {
+                            try {
+                                val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                                val recordingsDir = File(musicDir, "RiskGuard_Recordings")
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(android.net.Uri.fromFile(recordingsDir), "resource/folder")
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Could not open folder", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    })
+                    
+                    addView(TextView(context).apply {
+                        text = "Path: ${currentRecordingPath ?: "None"}"
+                        tag = "hub_rec_path"
+                        textSize = 10f
+                        setTextColor(Color.parseColor("#9CA3AF"))
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            topMargin = 8
+                        }
+                    })
+                }
+                addView(recLayout)
+            })
+
+            // --- ACTION BUTTONS ---
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.END
+                setPadding(0, 32, 0, 0)
+                
+                addView(Button(context).apply {
+                    text = "CLOSE HUB"
+                    setTextColor(Color.WHITE)
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    val btnBg = GradientDrawable().apply {
+                        setColor(Color.parseColor("#3F4050"))
+                        cornerRadius = 12f
+                    }
+                    background = btnBg
+                    setPadding(48, 24, 48, 24)
+                    setOnClickListener { view ->
+                        dismissDialog(view)
                     }
                 })
             })
         }
         
-        // Create dialog
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
-            .setView(dialogView)
+        scrollView.addView(hubLayout)
+        
+        hubDialog = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_NoActionBar)
+            .setView(scrollView)
+            .setOnDismissListener { hubDialog = null }
             .create()
-        
-        // Make it system overlay
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-        } else {
-            @Suppress("DEPRECATION")
-            dialog.window?.setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT)
+            
+        hubDialog?.let { dialog ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            } else {
+                @Suppress("DEPRECATION")
+                dialog.window?.setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT)
+            }
+            dialog.show()
         }
+    }
+
+    private fun createHubSection(context: Context, title: String, color: Int): LinearLayout {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            val bg = GradientDrawable().apply {
+                setColor(Color.parseColor("#2D2E3F")) // Dark card color
+                cornerRadius = 24f
+                setStroke(1, Color.parseColor("#3F4050")) // Subtle border
+            }
+            background = bg
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 32
+            }
+            
+            // Section Header
+            addView(TextView(context).apply {
+                text = title.uppercase()
+                textSize = 11f
+                setTextColor(color)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(32, 24, 32, 8)
+                letterSpacing = 0.1f
+            })
+        }
+    }
+
+    private fun createHubLabel(context: Context, text: String): TextView {
+        return TextView(context).apply {
+            this.text = text
+            textSize = 12f
+            setTextColor(Color.parseColor("#9CA3AF"))
+            setPadding(0, 16, 0, 4)
+            setTypeface(null, android.graphics.Typeface.BOLD)
+        }
+    }
+
+    private fun createHubEditText(context: Context, hint: String, text: String): EditText {
+        return EditText(context).apply {
+            this.hint = hint
+            setHintTextColor(Color.parseColor("#4B5563"))
+            setText(text)
+            textSize = 16f
+            setTextColor(Color.parseColor("#F9FAFB"))
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(0, 4, 0, 20)
+            
+            // Add a bottom line for better alignment feel
+            val bottomLine = GradientDrawable().apply {
+                setStroke(1, Color.parseColor("#3F4050"))
+            }
+            // we can't easily set a partial border in code without more complexity, 
+            // but we can use setCompoundDrawables or a wrapper. 
+            // For now, let's just use better padding and focus colors.
+        }
+    }
+
+    private fun saveFieldInstantly(field: String, value: String) {
+        val contact = contactsDb.getContactByPhone(currentPhoneNumber)
         
-        dialog.show()
+        val name = if (field == "name") value else (contact?.name ?: "Unknown")
+        val email = if (field == "email") value else (contact?.email ?: "")
+        val category = if (field == "category") value else (contact?.category ?: "Unknown Caller")
+        val company = if (field == "company") value else (contact?.company ?: "")
+        val notes = if (field == "notes") value else (contact?.notes ?: "")
+        
+        val success = contactsDb.saveContact(
+            phoneNumber = currentPhoneNumber,
+            name = name,
+            email = if (email.isNotEmpty()) email else null,
+            category = category,
+            company = if (company.isNotEmpty()) company else null,
+            notes = if (notes.isNotEmpty()) notes else null,
+            tags = contact?.tags
+        )
+        if (success) {
+            val wasNewContact = !isKnownNumber
+            isKnownNumber = true
+            Log.d("CallOverlayService", "Field $field saved instantly: $value")
+            
+            // Show visual feedback
+            showSaveIndicator("✓ ${field.capitalize()} saved")
+            
+            // Update floating icon badge if this was first save
+            if (wasNewContact) {
+                updateFloatingIconBadge()
+            }
+            
+            // Notify Flutter with ALL fields
+            MethodChannelHandler.sendContactSaved(
+                phoneNumber = currentPhoneNumber,
+                name = name,
+                email = if (email.isNotEmpty()) email else null,
+                category = category,
+                company = if (company.isNotEmpty()) company else null,
+                notes = if (notes.isNotEmpty()) notes else null
+            )
+        }
+    }
+
+    /**
+     * Show visual indicator when field is saved
+     */
+    private fun showSaveIndicator(message: String) {
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Update floating icon badge when contact status changes
+     */
+    private fun updateFloatingIconBadge() {
+        floatingIconView?.let {
+            windowManager?.removeView(it)
+            floatingIconView = null
+        }
+        createFloatingIcon()
+    }
+    
+    private fun dismissDialog(view: View) {
+        var parent = view.parent
+        while (parent != null) {
+            if (parent is android.app.Dialog) {
+                parent.dismiss()
+                break
+            }
+            parent = (parent as? android.view.View)?.parent
+        }
     }
     
     /**
      * Show post-call details after call ends
      */
     private fun showPostCallDetails() {
-        val contact = contactsDb.getContactByPhone(currentPhoneNumber)
-        if (contact != null) {
-            showSavedContactDetails(contact)
-        }
+        showFeatureHub() // User existing Feature Hub for summary
     }
-    
+
     /**
      * Recreate floating icon to update badge
      */

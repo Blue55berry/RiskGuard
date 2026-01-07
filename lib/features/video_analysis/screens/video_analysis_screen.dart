@@ -65,7 +65,10 @@ class VideoAnalysisScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardDark,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
@@ -131,7 +134,7 @@ class VideoAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 16),
           LinearProgressIndicator(
             value: provider.progress,
-            backgroundColor: AppColors.textSecondaryDark.withOpacity(0.2),
+            backgroundColor: AppColors.textSecondaryDark.withValues(alpha: 0.2),
             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
         ],
@@ -143,7 +146,7 @@ class VideoAnalysisScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.1),
+        color: AppColors.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.error, width: 1),
       ),
@@ -176,7 +179,10 @@ class VideoAnalysisScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.cardDark,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: threatColor.withOpacity(0.3), width: 2),
+            border: Border.all(
+              color: threatColor.withValues(alpha: 0.3),
+              width: 2,
+            ),
           ),
           child: Column(
             children: [
@@ -190,7 +196,7 @@ class VideoAnalysisScreen extends StatelessWidget {
                     colors: result.isAuthentic
                         ? [
                             AppColors.success,
-                            AppColors.success.withOpacity(0.7),
+                            AppColors.success.withValues(alpha: 0.7),
                           ]
                         : [AppColors.error, AppColors.warning],
                   ),
@@ -341,10 +347,10 @@ class VideoAnalysisScreen extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.warning.withOpacity(0.2),
+                        color: AppColors.warning.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.warning.withOpacity(0.4),
+                          color: AppColors.warning.withValues(alpha: 0.4),
                           width: 1,
                         ),
                       ),

@@ -31,7 +31,7 @@ class VoiceDetectionWidget extends StatelessWidget {
         border: Border.all(
           color: _getClassificationColor(
             result!.classification,
-          ).withOpacity(0.3),
+          ).withValues(alpha: 0.3),
           width: 2,
         ),
       ),
@@ -104,7 +104,9 @@ class VoiceDetectionWidget extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: result!.syntheticProbability,
                   minHeight: 8,
-                  backgroundColor: AppColors.textSecondaryDark.withOpacity(0.2),
+                  backgroundColor: AppColors.textSecondaryDark.withValues(
+                    alpha: 0.2,
+                  ),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     _getClassificationColor(result!.classification),
                   ),
@@ -136,10 +138,10 @@ class VoiceDetectionWidget extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.2),
+                    color: AppColors.warning.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: AppColors.warning.withOpacity(0.4),
+                      color: AppColors.warning.withValues(alpha: 0.4),
                       width: 1,
                     ),
                   ),
@@ -189,7 +191,10 @@ class VoiceDetectionWidget extends StatelessWidget {
       height: 50,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 2),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+          width: 2,
+        ),
       ),
       child: Center(
         child: Text(
@@ -232,7 +237,7 @@ class CompactVoiceIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _getColor(classification).withOpacity(0.2),
+        color: _getColor(classification).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _getColor(classification), width: 1),
       ),

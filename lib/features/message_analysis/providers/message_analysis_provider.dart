@@ -1,4 +1,6 @@
 /// Message Analysis Provider for state management
+library;
+
 import 'package:flutter/foundation.dart';
 import '../services/message_analyzer_service.dart';
 

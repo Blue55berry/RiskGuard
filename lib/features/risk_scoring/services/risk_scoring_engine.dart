@@ -1,4 +1,6 @@
 /// Risk Scoring Engine - Combines multiple risk factors into a final trust score
+library;
+
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/risk_levels.dart';
 import '../../call_detection/services/call_risk_service.dart';

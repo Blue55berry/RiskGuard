@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
 
@@ -269,8 +270,63 @@ class MethodChannelService {
     }
   }
 
+  /// Get saved contacts from native database
+  Future<List<Map<String, dynamic>>> getSavedContacts() async {
+    try {
+      final List<dynamic>? contacts = await _channel.invokeMethod(
+        'getSavedContacts',
+      );
+      if (contacts == null) return [];
+      return contacts.map((c) => Map<String, dynamic>.from(c as Map)).toList();
+    } catch (e) {
+      _log('Error getting saved contacts: $e');
+      return [];
+    }
+  }
+
+  /// Get protection statistics for dashboard
+  Future<Map<String, int>> getProtectionStatistics() async {
+    try {
+      final Map<dynamic, dynamic>? stats = await _channel.invokeMethod(
+        'getProtectionStats',
+      );
+      if (stats == null) {
+        return {
+          'threatsBlockedToday': 0,
+          'threatsBlockedThisWeek': 0,
+          'highRiskCallsCount': 0,
+          'totalCallsCount': 0,
+        };
+      }
+      return {
+        'threatsBlockedToday': stats['threatsBlockedToday'] as int? ?? 0,
+        'threatsBlockedThisWeek': stats['threatsBlockedThisWeek'] as int? ?? 0,
+        'highRiskCallsCount': stats['highRiskCallsCount'] as int? ?? 0,
+        'totalCallsCount': stats['totalCallsCount'] as int? ?? 0,
+      };
+    } catch (e) {
+      _log('Error getting protection statistics: $e');
+      return {
+        'threatsBlockedToday': 0,
+        'threatsBlockedThisWeek': 0,
+        'highRiskCallsCount': 0,
+        'totalCallsCount': 0,
+      };
+    }
+  }
+
+  /// Clear all recent calls from native history
+  Future<bool> clearRecentCalls() async {
+    try {
+      final bool? success = await _channel.invokeMethod('clearRecentCalls');
+      return success ?? false;
+    } catch (e) {
+      _log('Error clearing recent calls: $e');
+      return false;
+    }
+  }
+
   void _log(String message) {
-    // ignore: avoid_print
-    print('[MethodChannelService] $message');
+    developer.log('[MethodChannelService] $message');
   }
 }
